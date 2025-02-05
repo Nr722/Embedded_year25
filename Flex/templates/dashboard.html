@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Our script to fetch data -->
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<div class="dashboard-container">
+  {% if current_user.is_authenticated %}
+    <h2>Live Workout Feedback</h2>
+    <div class="feedback-box" id="live-feed">
+      <p id="rom">Range of Motion: --</p>
+      <p id="tut">Time Under Tension: -- s</p>
+      <p id="swing">Swinging: --</p>
+    </div>
+  {% else %}
+    <div class="please-login-message">
+      <h2>Welcome to FLEX</h2>
+      <p>You must be logged in to view live feedback.</p>
+      <a href="{{ url_for('login') }}" class="login-btn">Log In Now</a>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="hero-section">
+  <h1 class="hero-title">Welcome to FLEX</h1>
+  <p class="hero-subtitle">Your next-generation real-time workout form monitor</p>
+</div>
+
+<div class="home-container">
+  <h2>Explore the Possibilities</h2>
+  <p>We’ve built FLEX to help you perfect your form and maximize your gains. 
+     Check out this (totally scientific) chart correlating FLEX usage with gym progress!
+  </p>
+
+  <!-- Our silly chart -->
+  <canvas id="funnyChart" width="400" height="200"></canvas>
+
+  <div class="motivational-cards">
+    <div class="card">
+      <h3>Progress Over Perfection</h3>
+      <p>Every rep is a step forward. Improve gradually!</p>
+    </div>
+    <div class="card">
+      <h3>Precision x Practice</h3>
+      <p>Accurate tracking + consistent effort = unstoppable progress.</p>
+    </div>
+    <div class="card">
+      <h3>Stay Inspired</h3>
+      <p>A journey of a thousand reps starts with a single curl—FLEX is here to guide you.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Load Chart.js from a CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Load our custom home script for the chart -->
+<script src="{{ url_for('static', filename='home_script.js') }}"></script>
+
+{% endblock %}
