@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Your Wearable Tracker</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    /* Custom CSS */
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+    }
+    header {
+      background: #333;
+      color: #fff;
+      padding: 1rem 0;
+    }
+    header .navbar-brand {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .nav-link {
+      color: #fff !important;
+    }
+    .hero {
+      background: url('hero-image.jpg') no-repeat center center/cover;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    .hero-overlay {
+      background: rgba(0, 0, 0, 0.5);
+      width: 100%;
+      padding: 2rem;
+    }
+    section {
+      padding: 4rem 0;
+    }
+    footer {
+      background: #333;
+      color: #fff;
+      text-align: center;
+      padding: 1rem 0;
+    }
+    .cta-btn {
+      margin-top: 1rem;
+    }
+    @media (max-width: 768px) {
+      .hero {
+        height: 70vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header & Navigation -->
+  <header>
+    <nav class="navbar navbar-expand-lg container">
+      <a class="navbar-brand" href="#">YourBrand</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+              aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon" style="color:#fff;">☰</span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="#product">Product</a></li>
+          <li class="nav-item"><a class="nav-link" href="#technology">Technology</a></li>
+          <li class="nav-item"><a class="nav-link" href="#testimonials">Testimonials</a></li>
+          <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
+          <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section id="home" class="hero">
+    <div class="hero-overlay container">
+      <h1 class="display-4">Perfect Your Form, Perfect Your Workout</h1>
+      <p class="lead">Introducing the wearable that tracks your workout form in real time.</p>
+      <a href="#product" class="btn btn-primary btn-lg cta-btn">Learn More</a>
+    </div>
+  </section>
+
+  <!-- Product Details Section -->
+  <section id="product" class="container">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <!-- Replace with your product image -->
+        <img src="wearable.jpg" alt="Wearable Device" class="img-fluid">
+      </div>
+      <div class="col-md-6">
+        <h2>Wearable Tracker</h2>
+        <p>
+          Our state-of-the-art wearable tracks your workout form with precision, offering real-time feedback and detailed performance analytics.
+        </p>
+        <ul>
+          <li><strong>Form Tracking:</strong> Advanced sensors capture every movement.</li>
+          <li><strong>Real-Time Feedback:</strong> Instantly alerts you to correct your form.</li>
+          <li><strong>Performance Metrics:</strong> Monitor your progress over time.</li>
+        </ul>
+        <a href="#pricing" class="btn btn-success cta-btn">Buy Now</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technology Section -->
+  <section id="technology" class="bg-light">
+    <div class="container">
+      <h2 class="text-center">How It Works</h2>
+      <p class="text-center">Discover the technology behind our wearable tracker.</p>
+      <div class="row text-center">
+        <div class="col-md-4">
+          <h3>Precision Sensors</h3>
+          <p>Sensors capture every nuance of your movement.</p>
+        </div>
+        <div class="col-md-4">
+          <h3>Smart Algorithms</h3>
+          <p>Advanced algorithms analyze your form and deliver feedback.</p>
+        </div>
+        <div class="col-md-4">
+          <h3>Seamless Integration</h3>
+          <p>Sync your data with our user-friendly mobile app.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Testimonials Section -->
+  <section id="testimonials" class="container">
+    <h2 class="text-center">What Our Users Say</h2>
+    <div class="row">
+      <div class="col-md-4">
+        <blockquote class="blockquote">
+          <p>"This wearable has completely transformed my workouts!"</p>
+          <footer class="blockquote-footer">Alex</footer>
+        </blockquote>
+      </div>
+      <div class="col-md-4">
+        <blockquote class="blockquote">
+          <p>"Real-time feedback helped me improve my form dramatically."</p>
+          <footer class="blockquote-footer">Jordan</footer>
+        </blockquote>
+      </div>
+      <div class="col-md-4">
+        <blockquote class="blockquote">
+          <p>"I can finally track my progress with precision."</p>
+          <footer class="blockquote-footer">Casey</footer>
+        </blockquote>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section id="pricing" class="bg-light">
+    <div class="container">
+      <h2 class="text-center">Pricing</h2>
+      <div class="row">
+        <!-- Basic Plan -->
+        <div class="col-md-4">
+          <div class="card text-center mb-4">
+            <div class="card-header">
+              Basic
+            </div>
+            <div class="card-body">
+              <h3>$99</h3>
+              <p>Includes the wearable and basic app features.</p>
+              <a href="#" class="btn btn-primary">Buy Now</a>
+            </div>
+          </div>
+        </div>
+        <!-- Pro Plan -->
+        <div class="col-md-4">
+          <div class="card text-center mb-4">
+            <div class="card-header">
+              Pro
+            </div>
+            <div class="card-body">
+              <h3>$149</h3>
+              <p>Enhanced tracking and in-depth analytics.</p>
+              <a href="#" class="btn btn-primary">Buy Now</a>
+            </div>
+          </div>
+        </div>
+        <!-- Premium Plan -->
+        <div class="col-md-4">
+          <div class="card text-center mb-4">
+            <div class="card-header">
+              Premium
+            </div>
+            <div class="card-body">
+              <h3>$199</h3>
+              <p>All features plus personalized coaching.</p>
+              <a href="#" class="btn btn-primary">Buy Now</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="container">
+    <h2 class="text-center">Get in Touch</h2>
+    <form>
+      <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" class="form-control" placeholder="Your Name">
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" class="form-control" placeholder="Your Email">
+      </div>
+      <div class="form-group">
+        <label for="message">Message</label>
+        <textarea id="message" class="form-control" rows="5" placeholder="Your Message"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary cta-btn">Send Message</button>
+    </form>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>&copy; 2025 YourBrand. All rights reserved.</p>
+      <p>
+        <a href="#" style="color: #fff; text-decoration: underline;">Privacy Policy</a> |
+        <a href="#" style="color: #fff; text-decoration: underline;">Terms of Service</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- Optional JavaScript -->
+  <!-- jQuery, Popper.js, and Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
