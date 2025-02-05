@@ -1,88 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Your Wearable Tracker</title>
-  <!--Bootstrap CSS-->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     body {
       font-family: 'Poppins', sans-serif;
-      background-color: #f9f9f9;
-      color: #333;
-    }
-    header {
-      background: #4CAF93;
+      background: #1f1f38;
       color: #fff;
-      border-radius: 0 0 20px 20px;
+    }
+    header, footer {
+      font-family:'Courier New', Courier, monospace;
+      background-color: #2d2d5f;
+      color: #fff;
+      padding: 1rem 0;
     }
     .nav-link {
-      color: #fff !important;
+      color: #ccc !important;
       transition: color 0.3s ease;
     }
     .nav-link:hover {
-      color: #FFC107 !important;
+      color: #f0f0f0 !important;
     }
     section {
       padding: 4rem 0;
     }
     section.bg-light {
-      background-color: #E8F5E9;
+      background: linear-gradient(135deg, #2d2d5f 0%, #1f1f38 100%);
+      color: #ccc;
+    }
+    .hero-overlay {
+      text-align: center;
+      padding: 5rem 1rem;
+    }
+    .hero-overlay h1 {
+      font-size: 3rem;
+      color: #f0f0f0;
+    }
+    .hero-overlay p {
+      font-size: 1.3rem;
+      color: #ccc;
+    }
+    .btn-primary {
+      background: #4d4da7;
+      border: none;
+      transition: background 0.3s ease;
+    }
+    .btn-primary:hover {
+      background: #6a6acf;
+    }
+    .video-container {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .iphone-frame img {
+      width: 100%;
+      height: auto;
+      border-radius: 40px;
     }
     .form-control {
-      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.07);
+      border: none;
+      color: #ccc;
+      border-radius: 8px;
+      padding: 0.75rem;
+    }
+    button[type="submit"] {
+      background: #4d4da7;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      border-radius: 8px;
+    }
+    button[type="submit"]:hover {
+      background: #6a6acf;
     }
     .contact-info {
+      background: rgba(255, 255, 255, 0.07);
+      border-radius: 8px;
       padding: 1rem;
-      background: #E8F5E9;
-      border-radius: 10px;
     }
     .map-container {
       border-radius: 10px;
       overflow: hidden;
     }
-    .iphone-mockup {
-      text-align: center;
-      margin-top: 2rem;
+    footer a {
+      color: #ccc;
+      text-decoration: none;
     }
-    .iphone-frame {
-      max-width: 300px;
-      border: 15px solid white;
-      border-radius: 40px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      overflow: hidden;
+    footer a:hover {
+      color: #f0f0f0;
     }
-    .iphone-frame img {
-      width: 100%;
-      display: block;
-    }
-    footer {
-      background: #4CAF93;
-      color: #fff;
-      text-align: center;
-      padding: 2rem 0;
-      border-radius: 20px 20px 0 0;
-    }
-    .video-container {
-    position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
-    max-width: 100%;
-    background: #000;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  }
-
-  .video-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 10px;
-  }
   </style>
 </head>
 <body>
@@ -105,19 +121,20 @@
       </div>
     </nav>
   </header>
-  <!--Hero Section-->
+
+  <!-- Hero Section -->
   <section id="home" class="hero">
     <div class="hero-overlay container">
-      <h1 class="display-4">Perfect Your Form, Perfect Your Workout</h1>
-      <p class="lead">Introducing the wearable that tracks your workout form in real time.</p>
-      <a href="#product" class="btn btn-primary btn-lg cta-btn smooth-transition">Learn More</a>
+      <h1>Perfect Your Form, Perfect Your Workout</h1>
+      <p>Introducing the wearable that tracks your workout form in real time.</p>
+      <a href="#product" class="btn btn-primary btn-lg">Learn More</a>
     </div>
   </section>
-  <!--Product Details Section-->
+
+  <!-- Product Details Section -->
   <section id="product" class="container">
     <div class="row align-items-center">
       <div class="col-md-6">
-        <!--Add Image Of Product Below-->
         <img src="./image.jpg" alt="Wearable Device" class="img-fluid rounded">
       </div>
       <div class="col-md-6">
@@ -128,11 +145,12 @@
           <li><strong>Real-Time Feedback:</strong> Instantly alerts you to correct your form.</li>
           <li><strong>Performance Metrics:</strong> Monitor your progress over time.</li>
         </ul>
-        <a href="#pricing" class="btn btn-success cta-btn smooth-transition">Buy Now</a>
+        <a href="#pricing" class="btn btn-primary">Buy Now</a>
       </div>
     </div>
   </section>
 
+  <!-- Technology Section -->
   <section id="technology" class="bg-light">
     <div class="container text-center">
       <h2>How It Works</h2>
@@ -141,66 +159,35 @@
         <div class="col-md-4">
           <h3>Precision Sensors</h3>
           <p>Sensors capture every nuance of your movement.</p>
+          <img src="your-image-file3.jpg" alt="Seamless Integration" class="img-fluid mb-3 rounded">
         </div>
         <div class="col-md-4">
           <h3>Smart Algorithms</h3>
           <p>Advanced algorithms analyze your form and deliver feedback.</p>
+          <img src="your-image-file3.jpg" alt="Seamless Integration" class="img-fluid mb-3 rounded">
         </div>
         <div class="col-md-4">
           <h3>Seamless Integration</h3>
           <p>Sync your data with our user-friendly mobile app.</p>
+          <img src="./appImage.jpg" alt="Seamless Integration" class="img-fluid mb-3 rounded">
         </div>
       </div>
     </div>
   </section>
 
+  <!-- Video Section -->
   <section id="demo/randomvideo" class="bg-light">
     <div class="container text-center">
-      <h2 class="mb-4">See It In Action</h2>
-      <!-- Embed the video (YouTube example) -->
+      <h2>See It In Action</h2>
       <div class="video-container">
-        <iframe width="100%" height="400" src="https://www.youtube.com/embed/JJqgGEBmBes" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      </div>
-    </div>
-  </section>
-
-  <!-- App UI Preview Section -->
-  <section id="app-ui" class="bg-light">
-    <div class="container text-center">
-      <h2 class="mb-4">Explore the App</h2>
-      <p class="mb-4">Get real-time feedback and monitor your progress on our intuitive mobile app.</p>
-      <div class="row">
-        <!-- First iPhone Preview -->
-        <div class="col-md-4">
-          <div class="iphone-mockup mx-auto">
-            <div class="iphone-frame">
-              <img src="./appImage.jpg" alt="App UI Screenshot 1">
-            </div>
-          </div>
-        </div>
-        <!-- Second iPhone Preview -->
-        <div class="col-md-4">
-          <div class="iphone-mockup mx-auto">
-            <div class="iphone-frame">
-              <img src="./appImage2.jpg" alt="App UI Screenshot 2">
-            </div>
-          </div>
-        </div>
-        <!-- Third iPhone Preview -->
-        <div class="col-md-4">
-          <div class="iphone-mockup mx-auto">
-            <div class="iphone-frame">
-              <img src="./appImage3.jpg" alt="App UI Screenshot 3">
-            </div>
-          </div>
-        </div>
+        <iframe width="100%" height="600" src="https://www.youtube.com/embed/JJqgGEBmBes" frameborder="0" allowfullscreen></iframe>
       </div>
     </div>
   </section>
 
   <!-- Contact Section -->
   <section id="contact" class="container">
-    <h2 class="text-center mb-4">Get in Touch</h2>
+    <h2 class="text-center">Get in Touch</h2>
     <div class="row">
       <div class="col-md-6">
         <form>
@@ -216,11 +203,11 @@
             <label for="message">Message</label>
             <textarea id="message" class="form-control" rows="5" placeholder="Your Message"></textarea>
           </div>
-          <button type="submit" class="btn btn-primary cta-btn">Send Message</button>
+          <button type="submit" class="btn btn-primary">Send Message</button>
         </form>
       </div>
       <div class="col-md-6">
-        <div class="contact-info mb-3">
+        <div class="contact-info">
           <h5>Our Address</h5>
           <p>123 Fitness St, Workout City, CA 98765</p>
           <h5>Phone</h5>
@@ -238,14 +225,8 @@
   <footer>
     <div class="container">
       <p>&copy; 2025 YourBrand. All rights reserved.</p>
-      <p>
-        <a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a>
-      </p>
+      <p><a href="#">Privacy Policy</a> | <a href="#">Terms of Service</a></p>
     </div>
   </footer>
-
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
