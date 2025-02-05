@@ -1,215 +1,286 @@
+#!/usr/bin/env python3
+
 import time
 import math
-import smbus2
-import csv
+from smbus2 import SMBus
+from filterpy.kalman import KalmanFilter
+import numpy as np
 
-# I2C addresses
-FXOS8700_ADDR = 0x1f
+# I2C Addresses for Your Sensors
+FXOS8700_ADDR = 0x1F
 FXAS21002_ADDR = 0x21
 
-# I2C bus
-bus = smbus2.SMBus(1)
-
-# FXOS8700 Registers
+# FXOS8700 Registers (Accel + Mag)
 FXOS8700_CTRL_REG1 = 0x2A
 FXOS8700_OUT_X_MSB = 0x01
+FXOS8700_M_OUT_X_MSB = 0x33
 
-# FXAS21002 Registers
+# FXAS21002 Registers (Gyro)
 FXAS21002_CTRL_REG1 = 0x13
 FXAS21002_OUT_X_MSB = 0x01
 
-# Initialize Sensors
-def init_fxos8700():
-    bus.write_byte_data(FXOS8700_ADDR, FXOS8700_CTRL_REG1, 0x01)
 
-def init_fxas21002():
-    bus.write_byte_data(FXAS21002_ADDR, FXAS21002_CTRL_REG1, 0x0E)
+# Kalman Filter for Pitch Estimation
+class OrientationFilter:
+    def __init__(self):
+        """
+        Initializes an adaptive Kalman filter for pitch estimation.
+        Dynamically adjusts noise parameters based on movement speed.
+        """
+        self.use_kalman = True
+            # Set to True to enable Kalman filter
+        self.kf = KalmanFilter(dim_x=2, dim_z=1)
+        self.kf.x = np.array([[0.0], [0.0]])  # Initial state: [pitch, pitch_rate]
+        self.kf.F = np.array([[1, 0.02], [0, 1]])  # State transition matrix
+        self.kf.H = np.array([[1, 0]])  # Measurement function
+        self.kf.P *= 1e3  # Initial covariance matrix
 
-def read_sensor_data(address, reg, length=6):
-    data = bus.read_i2c_block_data(address, reg, length)
-    x = (data[0] << 8) | data[1]
-    y = (data[2] << 8) | data[3]
-    z = (data[4] << 8) | data[5]
-    if x & 0x8000: x -= 65536
-    if y & 0x8000: y -= 65536
-    if z & 0x8000: z -= 65536
-    return x, y, z
+        # Default noise values
+        self.base_Q = np.array([[1e-2, 0], [0, 1e-2]])  # Process noise (default for slow movement)
+        self.base_R = np.array([[5]])  # Measurement noise (default for accelerometer)
 
-def get_accel_data():
-    ax_raw, ay_raw, az_raw = read_sensor_data(FXOS8700_ADDR, FXOS8700_OUT_X_MSB, length=6)
-    ax = ax_raw / 4096.0
-    ay = ay_raw / 4096.0
-    az = az_raw / 4096.0
-    return ax, ay, az
+        self.kf.Q = self.base_Q
+        self.kf.R = self.base_R
 
-def get_gyro_data():
-    gx_raw, gy_raw, gz_raw = read_sensor_data(FXAS21002_ADDR, FXAS21002_OUT_X_MSB, length=6)
-    gx = gx_raw / 16.0
-    gy = gy_raw / 16.0
-    gz = gz_raw / 16.0
-    return gx, gy, gz
+    def update(self, gyro_y, accel_x, accel_y, accel_z, dt=0.02):
+        """
+        Updates the pitch estimate using an adaptive Kalman filter.
+        Adjusts noise levels dynamically based on movement speed.
+        """
+        # Compute pitch from accelerometer (based on gravity direction)
+        accel_pitch = math.atan2(accel_x, math.sqrt(accel_y**2 + accel_z**2)) * (180.0 / math.pi)
 
-def vector_magnitude(x, y, z):
-    return math.sqrt(x*x + y*y + z*z)
+        if not self.use_kalman:
+            return accel_pitch  # Return raw pitch if Kalman filter is disabled
 
-def get_accel_angle(ax, ay, az):
-    return math.atan2(ay, math.sqrt(ax**2 + az**2)) * (180.0 / math.pi)
+        # Estimate speed using gyroscope (higher speed → more trust in gyro)
+        speed = abs(gyro_y)  # Use absolute gyro reading as a speed estimate
 
-# Initialize sensors
-init_fxos8700()
-init_fxas21002()
+        # Dynamically adjust process noise (Q) and measurement noise (R)
+        if speed > 100:  # High-speed movement
+            self.kf.Q = self.base_Q * 10  # Increase process noise to adapt quickly
+            self.kf.R = self.base_R * 0.5  # Reduce accelerometer noise impact
+        elif speed > 50:  # Medium-speed movement
+            self.kf.Q = self.base_Q * 5
+            self.kf.R = self.base_R * 0.7
+        else:  # Slow movement
+            self.kf.Q = self.base_Q
+            self.kf.R = self.base_R
 
-# State Machine: 4 States
-WAITING_FOR_START = 0
-UP_PHASE = 1
-WAITING_FOR_DOWN = 2
-DOWN_PHASE = 3
-state = WAITING_FOR_START
+        # Predict and update Kalman filter
+        self.kf.predict()
+        self.kf.update(np.array([[accel_pitch]]))
 
-# Thresholds for detecting movement
-start_threshold = 7
-top_threshold = 10  
-end_threshold = 5  
-gyro_start_threshold = 20.0 
-gyro_end_threshold = 10.0  
-min_start_count = 2
-min_top_count = 2  
-min_wait_for_down_count = 3
-min_end_count = 5  
+        return self.kf.x[0, 0]  # Estimated pitch
 
-start_count = 0
-top_count = 0
-wait_for_down_count = 0
-end_count = 0
-rep_count = 0
-rep_data = []
-max_angle = -float('inf')  # Track peak angle
-up_end_time = None  # Track when up phase ends
-
-# CSV file setup
-raw_file = open("raw_data.csv", "w", newline="")
-feature_file = open("bicep_curl_metrics.csv", "w", newline="")
-
-raw_writer = csv.writer(raw_file)
-feature_writer = csv.writer(feature_file)
-
-# Write headers
-raw_writer.writerow(["Time", "Accel_X", "Accel_Y", "Accel_Z", "Gyro_X", "Gyro_Y", "Gyro_Z", "Accel_Mag", "Gyro_Mag"])
-feature_writer.writerow(["Rep", "Up Duration (s)", "Down Duration (s)", "ROM (degrees)", "Max Accel Mag (g)", 
-                         "Max Gyro Mag (dps)", "Min Gyro Mag (dps)", "Avg Accel Mag (g)", "Avg Gyro Mag (dps)", 
-                         "Peak Up Velocity (dps)", "Peak Down Velocity (dps)", "Jerk (smoothness)"])
-
-print("Starting bicep curl monitoring. Press Ctrl+C to stop...")
-
-try:
-    while True:
+# Thresholds for Rep Detection
+PITCH_START_THRESHOLD = 20    # Start position (near 0°)
+PITCH_PEAK_THRESHOLD = 90     # Peak position (~90° for full contraction)
+GYRO_THRESHOLD = 20           # Movement detection threshold (deg/sec)
+TIME_BETWEEN_REPS = 1       # Min time between reps (seconds)
+# Class for Bicep Curl Detection
+class BicepCurlDetector:
+    def __init__(self):
+        self.rep_count = 0
+        self.in_rep = False
+        self.last_rep_time = time.time()
+    
+    def detect_rep(self, pitch, gy):
+        """
+        Detects a full rep based on pitch angle and angular velocity.
+        """
         current_time = time.time()
+        
+        if not self.in_rep:
+            # Detect upward motion (concentric phase)
+            if pitch < PITCH_START_THRESHOLD and gy > GYRO_THRESHOLD:
+            # if gy > GYRO_THRESHOLD:
+                print()
+                self.in_rep = True
+                # print("Rep started (lifting)")
 
-        # Read sensors
-        ax, ay, az = get_accel_data()
-        gx, gy, gz = get_gyro_data()
+        elif self.in_rep:
+            # Detect peak (isometric contraction)
+            if pitch > PITCH_PEAK_THRESHOLD and abs(gy) < 5:
+                # print("Peak contraction detected")
+                x=5
+                
+            # Detect downward motion (eccentric phase)
+            if pitch < PITCH_START_THRESHOLD and gy < -GYRO_THRESHOLD:
+            # if pitch < PITCH_START_THRESHOLD:
+            # if gy < -GYRO_THRESHOLD:
+                if current_time - self.last_rep_time > TIME_BETWEEN_REPS:
+                    self.rep_count += 1
+                    self.last_rep_time = current_time
+                    self.in_rep = False
+                    print(f"Rep completed! Total reps: {self.rep_count}")
 
-        # Compute magnitudes
-        accel_mag = vector_magnitude(ax, ay, az)
-        gyro_mag = vector_magnitude(gx, gy, gz)
+        return self.rep_count
 
-        # Calculate range of motion using accel angles
-        accel_angle = get_accel_angle(ax, ay, az)
+# FXOS8700 Accelerometer + Magnetometer
+import csv
+import time
+import math
+from smbus2 import SMBus
+from filterpy.kalman import KalmanFilter
+import numpy as np
 
-        # Store raw data
-        raw_writer.writerow([current_time, ax, ay, az, gx, gy, gz, accel_mag, gyro_mag])
+# Sensor Addresses (Ensure you have these defined)
+FXOS8700_ADDR = 0x1F  # Replace with actual address
+FXAS21002_ADDR = 0x21  # Replace with actual address
+FXOS8700_CTRL_REG1 = 0x2A
+FXOS8700_OUT_X_MSB = 0x01
+FXOS8700_M_OUT_X_MSB = 0x33
+FXAS21002_CTRL_REG1 = 0x13
+FXAS21002_OUT_X_MSB = 0x01
 
-        if state == WAITING_FOR_START:
-            if accel_mag > start_threshold or gyro_mag > gyro_start_threshold:
-                print(f'accel_mag: {accel_mag}, gyro_mag: {gyro_mag}')
-                start_count += 1
-            else:
-                start_count = 0
+class FXOS8700:
+    def __init__(self, bus):
+        self.bus = bus
+        self.initialize()
+        self.accel_offset = [0, 0, 0]
+        self.mag_offset = [0, 0, 0]
 
-            if start_count >= min_start_count:
-                state = UP_PHASE
-                rep_start_time = current_time
-                rep_data = []
-                rep_count += 1
-                max_angle = accel_angle  # Reset max angle
-                print(f"\n*** Rep {rep_count} START (Up Phase) ***\n")
+    def initialize(self):
+        self.bus.write_byte_data(FXOS8700_ADDR, FXOS8700_CTRL_REG1, 0x00)  # Standby
+        self.bus.write_byte_data(FXOS8700_ADDR, FXOS8700_CTRL_REG1, 0x01)  # Activate
 
-        elif state == UP_PHASE:
-            rep_data.append((current_time, accel_mag, gyro_mag, accel_angle))
+    def calibrate(self, samples=100):
+        """Calibrate accelerometer and magnetometer offsets."""
+        print("Calibrating accelerometer and magnetometer...")
 
-            # Track the highest point reached
-            if accel_angle > max_angle:
-                max_angle = accel_angle
-                up_end_time = current_time  # Store time at peak
+        accel_readings = np.zeros(3)
+        mag_readings = np.zeros(3)
 
-            # Wait until there is minimal motion for a short time (indicating a pause)
-            if accel_mag < top_threshold and gyro_mag < gyro_end_threshold:
-                top_count += 1
-                if top_count >= min_top_count:
-                    state = WAITING_FOR_DOWN
-                    print(f"*** Pause detected at top, waiting for downward motion ***")
-                    print(f'gyro_x: {gx}, gyro_y: {gy}, gyro_z: {gz}')
-            else:
-                top_count = 0  # Reset if movement resumes
+        for _ in range(samples):
+            ax, ay, az, mx, my, mz = self.read_accel_mag(raw=True)
+            accel_readings += np.array([ax, ay, az])
+            mag_readings += np.array([mx, my, mz])
+            time.sleep(0.01)  # Small delay
 
-        elif state == WAITING_FOR_DOWN:
-            # Detect downward movement after the pause
-            if accel_mag > start_threshold or gyro_mag > gyro_start_threshold:
-                wait_for_down_count += 1
-                # print(f'Waiting for down count: {wait_for_down_count}')
-            else:
-                wait_for_down_count = 0
+        self.accel_offset = (accel_readings / samples).tolist()
+        self.mag_offset = (mag_readings / samples).tolist()
 
-            if wait_for_down_count >= min_wait_for_down_count:
-                state = DOWN_PHASE
-                print('accel_mag: ', accel_mag, 'gyro_mag: ', gyro_mag)
-                print(f"*** Transitioning to DOWN PHASE ***")
+        print(f"Accelerometer offsets: {self.accel_offset}")
+        print(f"Magnetometer offsets: {self.mag_offset}\n")
 
-        elif state == DOWN_PHASE:
-            rep_data.append((current_time, accel_mag, gyro_mag, accel_angle))
-            
-            if accel_mag < end_threshold and gyro_mag < gyro_end_threshold:
-                end_count += 1
-            else:
-                end_count = 0
+    def read_accel_mag(self, raw=False):
+        accel_data = self.bus.read_i2c_block_data(FXOS8700_ADDR, FXOS8700_OUT_X_MSB, 6)
+        mag_data = self.bus.read_i2c_block_data(FXOS8700_ADDR, FXOS8700_M_OUT_X_MSB, 6)
 
-            if end_count >= min_end_count:
-                state = WAITING_FOR_START
-                rep_end_time = current_time
+        sensitivity = 8192  # For ±2g mode (adjust if using ±4g or ±8g)
+        ax = (self.twos_comp((accel_data[0] << 8) | accel_data[1], 14) >> 2) * 9.81 / sensitivity
+        ay = (self.twos_comp((accel_data[2] << 8) | accel_data[3], 14) >> 2) * 9.81 / sensitivity
+        az = (self.twos_comp((accel_data[4] << 8) | accel_data[5], 14) >> 2) * 9.81 / sensitivity
 
-                # Ensure up_end_time is valid
-                if up_end_time is None:
-                    up_end_time = rep_start_time  # Default to start time
+        mx = self.twos_comp((mag_data[0] << 8) | mag_data[1], 16)
+        my = self.twos_comp((mag_data[2] << 8) | mag_data[3], 16)
+        mz = self.twos_comp((mag_data[4] << 8) | mag_data[5], 16)
 
-                # Compute Features
-                up_duration = up_end_time - rep_start_time
-                down_duration = rep_end_time - up_end_time
+        if raw:
+            return ax, ay, az, mx, my, mz
 
-                max_accel_mag = max(x[1] for x in rep_data)
-                max_gyro_mag = max(x[2] for x in rep_data)
-                min_gyro_mag = min(x[2] for x in rep_data)
-                avg_accel_mag = sum(x[1] for x in rep_data) / len(rep_data)
-                avg_gyro_mag = sum(x[2] for x in rep_data) / len(rep_data)
+        return (
+            ax - self.accel_offset[0],
+            ay - self.accel_offset[1],
+            az - self.accel_offset[2],
+            mx - self.mag_offset[0],
+            my - self.mag_offset[1],
+            mz - self.mag_offset[2]
+        )
 
-                # Compute ROM
-                min_angle = min(x[3] for x in rep_data)
-                ROM = max_angle - min_angle
+    @staticmethod
+    def twos_comp(val, bits):
+        if val & (1 << (bits - 1)):
+            val -= 1 << bits
+        return val
 
-                # Save features
-                feature_writer.writerow([rep_count, up_duration, down_duration, ROM, max_accel_mag, max_gyro_mag, 
-                                         min_gyro_mag, avg_accel_mag, avg_gyro_mag, max_gyro_mag, min_gyro_mag])
+class FXAS21002C:
+    def __init__(self, bus):
+        self.bus = bus
+        self.initialize()
+        self.gyro_offset = [0, 0, 0]
 
-                print(f"\n*** Rep {rep_count} END ***\n")
+    def initialize(self):
+        self.bus.write_byte_data(FXAS21002_ADDR, FXAS21002_CTRL_REG1, 0x00)  # Standby
+        self.bus.write_byte_data(FXAS21002_ADDR, FXAS21002_CTRL_REG1, 0x0E)  # Set ODR and enable
+        self.bus.write_byte_data(FXAS21002_ADDR, 0x0D, 0x03)  # Set full-scale range to ±250 dps
 
-                # Reset counters
-                start_count = 0
-                top_count = 0
-                end_count = 0
-                wait_for_down_count = 0  
+    def calibrate(self, samples=100):
+        """Calibrate gyroscope offsets."""
+        print("Calibrating gyroscope...")
 
-        time.sleep(0.02)
+        gyro_readings = np.zeros(3)
 
-except KeyboardInterrupt:
-    print("\nStopping...")
-    raw_file.close()
-    feature_file.close()
+        for _ in range(samples):
+            gx, gy, gz = self.read_gyro(raw=True)
+            gyro_readings += np.array([gx, gy, gz])
+            time.sleep(0.01)
+
+        self.gyro_offset = (gyro_readings / samples).tolist()
+        print(f"Gyroscope offsets: {self.gyro_offset}\n")
+
+    def read_gyro(self, raw=False):
+        gyro_data = self.bus.read_i2c_block_data(FXAS21002_ADDR, FXAS21002_OUT_X_MSB, 6)
+
+        gx = self.twos_comp((gyro_data[0] << 8) | gyro_data[1], 16)
+        gy = self.twos_comp((gyro_data[2] << 8) | gyro_data[3], 16)
+        gz = self.twos_comp((gyro_data[4] << 8) | gyro_data[5], 16)
+
+        sensitivity = 32768 / 250  # Adjust based on full-scale range
+        gx, gy, gz = gx / sensitivity, gy / sensitivity, gz / sensitivity
+
+        if raw:
+            return gx, gy, gz
+
+        return (
+            gx - self.gyro_offset[0],
+            gy - self.gyro_offset[1],
+            gz - self.gyro_offset[2]
+        )
+
+    @staticmethod
+    def twos_comp(val, bits):
+        if val & (1 << (bits - 1)):
+            val -= 1 << bits
+        return val
+
+def main():
+    with SMBus(1) as bus:
+        fxos = FXOS8700(bus)
+        fxas = FXAS21002C(bus)
+        filter_ = OrientationFilter()
+        detector = BicepCurlDetector()
+
+        # Perform calibration
+        fxos.calibrate()
+        fxas.calibrate()
+
+        csv_filename = "bicep_curl_data.csv"
+        with open(csv_filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Timestamp", "ax", "ay", "az", "gx", "gy", "gz", "mx", "my", "mz", "Pitch", "Reps"])
+
+            try:
+                while True:
+                    ax, ay, az, mx, my, mz = fxos.read_accel_mag()
+                    gx, gy, gz = fxas.read_gyro()
+
+                    # Compute pitch
+                    raw_pitch = filter_.update(gy, ax, ay, az)
+                    pitch = raw_pitch  # No extra offset needed
+
+                    # Detect reps
+                    rep_count = detector.detect_rep(pitch, gy)
+
+                    # Save data
+                    timestamp = time.time()
+                    writer.writerow([timestamp, ax, ay, az, gx, gy, gz, mx, my, mz, pitch, rep_count])
+                    file.flush()
+                    time.sleep(0.015)  # Run at ~50Hz
+
+            except KeyboardInterrupt:
+                print(f"Data saved to {csv_filename}. Exiting...")
+
+if __name__ == "__main__":
+    main()
