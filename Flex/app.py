@@ -54,6 +54,27 @@ def home():
     """Public landing page with chart and animations."""
     return render_template('index.html')
 
+@app.route('/post_data', methods=['POST'])
+def post_data():
+    # Attempt to retrieve JSON data from the request
+    json_data = request.get_json()
+    
+    if not json_data:
+        # If no JSON data was sent, return an error response
+        return jsonify({"error": "No JSON data provided"}), 400
+
+    # Print the received JSON data to the terminal (stdout)
+    print("Received JSON data:")
+    print(json_data)
+    
+    # Optionally, you can process the data here
+    # For now, we'll just echo the data back in the response
+    return jsonify({
+        "message": "Data received successfully",
+        "data": json_data
+    }), 200
+
+
 @app.route('/contact')
 def contact():
     """Contact page - show basic info."""
@@ -115,11 +136,11 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('home'))
 
+
 # -----------------------------------------------------------------------------
 # MAIN
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
