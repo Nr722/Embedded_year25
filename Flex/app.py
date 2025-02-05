@@ -68,8 +68,10 @@ def dashboard():
 @app.route('/ml_feedback')
 @login_required
 def ml_feedback():
-    """JSON endpoint for live ML data (dashboard)."""
-    return jsonify(mock_ml_output())
+    print("DEBUG: /ml_feedback was called!")     # Add
+    data = mock_ml_output()
+    print("Returning data:", data)               # Add
+    return jsonify(data)
 
 # --- Authentication ---
 @app.route('/signup', methods=['GET', 'POST'])

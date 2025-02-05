@@ -1,16 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Our script to fetch data -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+<!-- The script to fetch data and update the chart -->
 <script src="{{ url_for('static', filename='script.js') }}"></script>
 
 <div class="dashboard-container">
   {% if current_user.is_authenticated %}
     <h2>Live Workout Feedback</h2>
+
+    <!-- Possibly keep textual data for ROM & Swinging -->
     <div class="feedback-box" id="live-feed">
       <p id="rom">Range of Motion: --</p>
-      <p id="tut">Time Under Tension: -- s</p>
       <p id="swing">Swinging: --</p>
+    </div>
+
+    <!-- NEW: A TUT chart canvas -->
+    <div class="feedback-box">
+      <h3>Time Under Tension (s)</h3>
+      <canvas id="tutChart" width="600" height="300"></canvas>
     </div>
   {% else %}
     <div class="please-login-message">
@@ -20,5 +29,4 @@
     </div>
   {% endif %}
 </div>
-
 {% endblock %}

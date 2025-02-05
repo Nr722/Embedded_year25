@@ -27,6 +27,41 @@
     </nav>
   </header>
 
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-messages">
+        {% for category, msg in messages %}
+          <div class="flash-msg flash-{{ category }}">
+            {{ msg }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Wait 5 seconds, then fade out or remove the flash messages
+      setTimeout(() => {
+        const flashMessages = document.querySelectorAll('.flash-msg');
+        flashMessages.forEach(msg => {
+          // Option A: remove() immediately
+          // msg.remove();
+
+          // Option B: fade out with a CSS transition, then remove
+          msg.style.transition = 'opacity 1s';
+          msg.style.opacity = '0';
+          // after the transition, remove the element
+          setTimeout(() => msg.remove(), 1000);
+        });
+      }, 5000); // 5 seconds
+    });
+</script>
+
+
+
+
+
   <div class="content">
     {% block content %}{% endblock %}
   </div>

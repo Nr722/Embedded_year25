@@ -189,3 +189,21 @@ footer {
   color: #fff;
   margin-top: 2rem;
 }
+
+.flash-messages {
+  max-width: 600px;
+  margin: 1rem auto;
+  padding: 0 1rem;
+}
+.flash-msg {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: bold;
+}
+.flash-success { background-color: #4CAF50; }  /* green */
+.flash-warning { background-color: #ff9800; }  /* orange */
+.flash-danger  { background-color: #f44336; }  /* red */
+.flash-info    { background-color: #2196F3; }  /* blue */
+
