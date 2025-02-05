@@ -48,7 +48,7 @@
     }
     .iphone-frame {
       max-width: 300px;
-      border: 15px solid #333;
+      border: 15px solid white;
       border-radius: 40px;
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
       overflow: hidden;
@@ -64,13 +64,32 @@
       padding: 2rem 0;
       border-radius: 20px 20px 0 0;
     }
+    .video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+    background: #000;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .video-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+  }
   </style>
 </head>
 <body>
   <!-- Header -->
   <header>
     <nav class="navbar navbar-expand-lg container">
-      <a class="navbar-brand" href="#">YourBrand</a>
+      <a class="navbar-brand" href="#">Flex</a>
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon">☰</span>
       </button>
@@ -99,7 +118,7 @@
     <div class="row align-items-center">
       <div class="col-md-6">
         <!--Add Image Of Product Below-->
-        <img src="wearable.jpg" alt="Wearable Device" class="img-fluid rounded">
+        <img src="./image.jpg" alt="Wearable Device" class="img-fluid rounded">
       </div>
       <div class="col-md-6">
         <h2>Wearable Tracker</h2>
@@ -135,14 +154,45 @@
     </div>
   </section>
 
+  <section id="demo/randomvideo" class="bg-light">
+    <div class="container text-center">
+      <h2 class="mb-4">See It In Action</h2>
+      <!-- Embed the video (YouTube example) -->
+      <div class="video-container">
+        <iframe width="100%" height="400" src="https://www.youtube.com/embed/JJqgGEBmBes" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
+  </section>
+
   <!-- App UI Preview Section -->
   <section id="app-ui" class="bg-light">
     <div class="container text-center">
       <h2 class="mb-4">Explore the App</h2>
       <p class="mb-4">Get real-time feedback and monitor your progress on our intuitive mobile app.</p>
-      <div class="iphone-mockup mx-auto">
-        <div class="iphone-frame">
-          <img src="https://via.placeholder.com/300x600.png?text=App+UI+Preview" alt="App UI Screenshot">
+      <div class="row">
+        <!-- First iPhone Preview -->
+        <div class="col-md-4">
+          <div class="iphone-mockup mx-auto">
+            <div class="iphone-frame">
+              <img src="./appImage.jpg" alt="App UI Screenshot 1">
+            </div>
+          </div>
+        </div>
+        <!-- Second iPhone Preview -->
+        <div class="col-md-4">
+          <div class="iphone-mockup mx-auto">
+            <div class="iphone-frame">
+              <img src="./appImage2.jpg" alt="App UI Screenshot 2">
+            </div>
+          </div>
+        </div>
+        <!-- Third iPhone Preview -->
+        <div class="col-md-4">
+          <div class="iphone-mockup mx-auto">
+            <div class="iphone-frame">
+              <img src="./appImage3.jpg" alt="App UI Screenshot 3">
+            </div>
+          </div>
         </div>
       </div>
     </div>
