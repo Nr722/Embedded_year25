@@ -1,25 +1,43 @@
 {% extends "base.html" %}
 {% block content %}
 
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
-<!-- The script to fetch data and update the chart -->
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<!-- Optional: Inline styles for canvas layering (can be moved to style.css if desired) -->
+<style>
+  /* Canvas container specific to the graph */
+  .canvas-container {
+    position: relative;
+    width: 600px;
+    height: 300px;
+    border: 1px solid #ccc;
+    background: #fff;
+    margin: 0 auto; /* center the canvas */
+  }
+  .canvas-container canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+</style>
 
 <div class="dashboard-container">
   {% if current_user.is_authenticated %}
     <h2>Live Workout Feedback</h2>
 
-    <!-- Possibly keep textual data for ROM & Swinging -->
+    <!-- Textual feedback for ROM & Swinging -->
     <div class="feedback-box" id="live-feed">
       <p id="rom">Range of Motion: --</p>
       <p id="swing">Swinging: --</p>
     </div>
 
-    <!-- NEW: A TUT chart canvas -->
+    <!-- Pitch graph with scrolling background and moving cursor -->
     <div class="feedback-box">
-      <h3>Time Under Tension (s)</h3>
-      <canvas id="tutChart" width="600" height="300"></canvas>
+      <h3>Pitch (degrees)</h3>
+      <div class="canvas-container">
+        <!-- Background layer: Pre‑drawn pitch pattern -->
+        <canvas id="backgroundCanvas" width="600" height="300"></canvas>
+        <!-- Foreground layer: Cursor showing live sensor pitch -->
+        <canvas id="cursorCanvas" width="600" height="300"></canvas>
+      </div>
     </div>
   {% else %}
     <div class="please-login-message">
@@ -29,4 +47,182 @@
     </div>
   {% endif %}
 </div>
+
+<!-- Include Socket.IO -->
+<script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Canvas and animation configuration
+  const canvasWidth = 600;
+  const canvasHeight = 300;
+  const cycleDuration = 8; // seconds per full cycle:
+                           // 3s at 0, 1s ramp-up, 1s at top, 3s ramp-down
+  const scrollSpeed = canvasWidth / cycleDuration; // pixels per second
+  const noDataThreshold = 1000; // ms: background scrolls only if data received within last 1 sec
+  const minPitch = -20;
+  const maxPitch = 110;
+  const pitchRange = maxPitch - minPitch; // 130 degrees total
+
+  // Get canvas elements and contexts
+  const bgCanvas = document.getElementById('backgroundCanvas');
+  const bgCtx = bgCanvas.getContext('2d');
+  const cursorCanvas = document.getElementById('cursorCanvas');
+  const cursorCtx = cursorCanvas.getContext('2d');
+
+  // Global variables for sensor data and animation
+  let lastDataTime = 0;         // Timestamp of the last received sensor data (in ms)
+  let globalOffset = 0;         // Current horizontal offset for background scrolling
+  let lastTimestamp;            // For calculating delta time between frames
+  let currentPitch = 0;         // Latest sensor pitch value
+  let smoothedPitch = 0;        // Smoothed pitch for cursor display
+
+  // Easing functions for curved transitions:
+  function easeInQuad(t) {
+    // Quadratic ease-in: accelerating from zero velocity
+    return t * t;
+  }
+
+  function easeOutQuad(t) {
+    // Quadratic ease-out: decelerating to zero velocity
+    return t * (2 - t);
+  }
+
+  // Optional: Draw a grid similar to Chart.js for visual consistency.
+  function drawGrid(ctx) {
+    const gridColor = 'rgba(0, 0, 0, 0.1)';
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    
+    // Draw vertical grid lines every 50px
+    for (let x = 0; x <= canvasWidth; x += 50) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvasHeight);
+      ctx.stroke();
+    }
+    
+    // Draw horizontal grid lines every 50px
+    for (let y = 0; y <= canvasHeight; y += 50) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvasWidth, y);
+      ctx.stroke();
+    }
+  }
+
+  // Function to draw one cycle of the pre-defined pitch pattern.
+  // Pattern:
+  //   - 0 ≤ t < 3 seconds: pitch = 0
+  //   - 3 ≤ t < 4 seconds: ramp up (0→90) with an ease-in quadratic curve
+  //   - 4 ≤ t < 5 seconds: pitch = 90
+  //   - 5 ≤ t < 8 seconds: ramp down (90→0) with an ease-out quadratic curve
+  function drawCycle(ctx, offsetX) {
+    ctx.beginPath();
+    for (let x = 0; x <= canvasWidth; x++) {
+      // Compute time (in seconds) along the cycle, adding offset.
+      let t = ((x + offsetX) / canvasWidth) * cycleDuration;
+      t = t % cycleDuration; // cycle repeats
+
+      // Determine the pitch for this time (in degrees)
+      let pitch;
+      if (t < 3) {
+        pitch = 0;
+      } else if (t < 4) {
+        // Ramp up from 0 to 90 over 1 second with easing
+        let u = (t - 3) / 1; // normalized [0,1]
+        pitch = 90 * easeInQuad(u);
+      } else if (t < 5) {
+        pitch = 90;
+      } else {
+        // Ramp down from 90 to 0 over 3 seconds with easing
+        let u = (t - 5) / 3; // normalized [0,1]
+        pitch = 90 * (1 - easeOutQuad(u));
+      }
+
+      // Map the pitch to a y coordinate on the canvas.
+      let y = canvasHeight - ((pitch - minPitch) / pitchRange) * canvasHeight;
+      if (x === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    // Use a Chart.js-like blue tone
+    ctx.strokeStyle = 'rgba(75, 192, 192, 1)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Animate the background (scrolling) only when sensor data is being received.
+  function animateBackground(timestamp) {
+    if (!lastTimestamp) lastTimestamp = timestamp;
+    let dt = (timestamp - lastTimestamp) / 1000; // delta time in seconds
+    lastTimestamp = timestamp;
+
+    // Only update the offset if recent sensor data has been received.
+    if (timestamp - lastDataTime < noDataThreshold) {
+      globalOffset = (globalOffset + scrollSpeed * dt) % canvasWidth;
+    }
+    // Clear and redraw the background pattern.
+    bgCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    
+    // Optionally draw a light grid similar to Chart.js
+    drawGrid(bgCtx);
+    
+    drawCycle(bgCtx, globalOffset);
+    // Draw a second copy shifted left to ensure seamless scrolling.
+    bgCtx.save();
+    bgCtx.translate(-canvasWidth, 0);
+    drawCycle(bgCtx, globalOffset);
+    bgCtx.restore();
+
+    requestAnimationFrame(animateBackground);
+  }
+  requestAnimationFrame(animateBackground);
+
+  // Draw the moving cursor (vertical line and circular marker) with smoothing.
+  function drawCursor() {
+    // Smoothly interpolate towards the current pitch value.
+    smoothedPitch += (currentPitch - smoothedPitch) * 0.1;
+    cursorCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+    
+    // Fixed horizontal position for the cursor (adjust as desired)
+    const fixedX = 100;
+    // Map the smoothed pitch to a y coordinate using our pitch range.
+    let y = canvasHeight - ((smoothedPitch - minPitch) / pitchRange) * canvasHeight;
+    
+    // Draw a vertical line for reference.
+    cursorCtx.beginPath();
+    cursorCtx.moveTo(fixedX, 0);
+    cursorCtx.lineTo(fixedX, canvasHeight);
+    cursorCtx.strokeStyle = 'rgba(75, 192, 192, 1)';
+    cursorCtx.lineWidth = 2;
+    cursorCtx.stroke();
+    
+    // Draw a circular marker at the cursor position.
+    cursorCtx.beginPath();
+    cursorCtx.arc(fixedX, y, 5, 0, 2 * Math.PI);
+    cursorCtx.fillStyle = 'rgba(75, 192, 192, 1)';
+    cursorCtx.fill();
+    
+    requestAnimationFrame(drawCursor);
+  }
+  requestAnimationFrame(drawCursor);
+
+  // Connect to the Socket.IO server to receive sensor data.
+  const socket = io();
+  socket.on('connect', function() {
+    console.log('Connected to server via Socket.IO.');
+  });
+  socket.on('sensor_data', function(data) {
+    if (data.pitch !== undefined) {
+      currentPitch = data.pitch;
+      // Update the last data timestamp (in ms)
+      lastDataTime = performance.now();
+    }
+  });
+});
+</script>
+
 {% endblock %}
