@@ -311,62 +311,86 @@ socket.on('sensor_data', function(data) {
 
 
   // Your EC2 server URL
-  const EC2_SERVER_URL = "http://ec2-44-201-164-184.compute-1.amazonaws.com:5000";
+// Your EC2 server URL
+const EC2_SERVER_URL = "http://ec2-44-201-164-184.compute-1.amazonaws.com:5000";
 
-  // Updated sendMetricsData function
-  function sendMetricsData(aggregatedData) {
-    const serverOutput = document.getElementById("serverOutput");
-    serverOutput.textContent = "Processing data...";
-
-    fetch(EC2_SERVER_URL + "/save_metrics", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(aggregatedData)
-    })
-
+// Define the polling function to check if processed results are ready
+function pollProcessedResults() {
+  fetch(EC2_SERVER_URL + "/get_processed_results", { method: "GET" })
     .then(response => response.json())
-    .then(data => {
-        console.log("Server Response:", data);
-
-        if (data.status === "success") {
-            serverOutput.textContent = "Processing complete! Fetching results...";
-
-            // Fetch processed results
-            fetch(EC2_SERVER_URL + "/get_processed_results",
-              {method: "GET"}
-            )
-              .then(response => response.json())
-              .then(processedData => {
-                  console.log("Processed Data:", processedData);
-                  displayProcessedResults(processedData);
-              })
-              .catch(error => {
-                  console.error("Error fetching processed results:", error);
-                  serverOutput.textContent = "Error fetching processed results.";
-              });
-
-        } else {
-            serverOutput.textContent = "Error: " + data.message;
-        }
+    .then(processedData => {
+      if (processedData.status === "processing") {
+        // Results not ready; poll again after a delay
+        setTimeout(pollProcessedResults, 2000);
+      } else {
+        console.log("values in processed data: ", processedData);
+        // Processing complete; display results
+        displayProcessedResults(processedData["processed_reps"]);
+        document.getElementById("serverOutput").textContent = "Processing complete!";
+      }
     })
     .catch(error => {
-        console.error("Error:", error);
-        serverOutput.textContent = "Error sending data.";
+      console.error("Error polling processed results:", error);
+      document.getElementById("serverOutput").textContent = "Error fetching processed results.";
     });
 }
 
-// Function to display results
+function sendMetricsData(aggregatedData) {
+  const serverOutput = document.getElementById("serverOutput");
+  serverOutput.textContent = "Processing data...";
+
+  fetch(EC2_SERVER_URL + "/save_metrics", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(aggregatedData)
+  })
+  .then(response => response.json())
+  .then(data => {
+      console.log("Server Response:", data);
+
+      if (data.status === "processing" || data.status === "success") {
+          serverOutput.textContent = "Processing complete! Fetching results...";
+          // Start polling until the processed results are ready
+          pollProcessedResults();
+      } else {
+          serverOutput.textContent = "Error: " + data.message;
+      }
+  })
+  .catch(error => {
+      console.error("Error:", error);
+      serverOutput.textContent = "Error sending data.";
+  });
+}
+
+
 function displayProcessedResults(data) {
     const resultsContainer = document.getElementById("processedResults");
     resultsContainer.innerHTML = "<h3>Processed Results:</h3>";
 
-    if (data.processed_reps) {
-        data.processed_reps.forEach(rep => {
-            let repInfo = `<p>Rep ${rep.rep_count}: Cluster ${rep.cluster}, Max Pitch: ${rep.max_pitch}, Max Gz Up: ${rep.max_gz_up}, Max Gz Down: ${rep.max_gz_down}, Max Az: ${rep.max_az}</p>`;
+    let reps = [];
+    
+    // Check if data["processed_reps"] exists and is an array.
+    if (data["processed_reps"]) {
+        if (Array.isArray(data["processed_reps"])) {
+            reps = data["processed_reps"];
+        } else {
+            // If it's not an array, attempt to convert it to an array.
+            reps = [data["processed_reps"]];
+        }
+    } else {
+        resultsContainer.innerHTML += `<p>Error: ${data["error"] || "No processed reps available."}</p>`;
+        return;
+    }
+
+    // Now safely iterate over the reps array.
+    if (reps.length > 0) {
+        reps.forEach(rep => {
+          console.log(rep);
+            let repInfo = `<p>Rep ${rep["rep_count"]}: Cluster ${rep["cluster"]}, Max Pitch: ${rep.max_pitch}, Max Gz Up: ${rep.max_gz_up}, Max Gz Down: ${rep.max_gz_down}, Max Az: ${rep.max_az}</p>`;
             resultsContainer.innerHTML += repInfo;
         });
     } else {
-        resultsContainer.innerHTML += `<p>Error: ${data.error}</p>`;
+        resultsContainer.innerHTML += `<p>No processed reps available.</p>`;
     }
 }
 
