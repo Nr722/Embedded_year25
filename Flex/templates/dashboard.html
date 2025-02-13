@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Optional: Inline styles for canvas layering (can be moved to style.css if desired) -->
+<!-- Optional: Inline styles for canvas layering and notification banner (can be moved to style.css if desired) -->
 <style>
   /* Canvas container specific to the graph */
   .canvas-container {
@@ -9,7 +9,7 @@
     width: 600px;
     height: 300px;
     border: 1px solid #ccc;
-    background: #fff;
+    background: transparent; /* transparent background */
     margin: 0 auto; /* center the canvas */
   }
   .canvas-container canvas {
@@ -17,25 +17,72 @@
     top: 0;
     left: 0;
   }
+  .feedback-description {
+    font-size: 14px;
+    color: #dddddd;
+    text-align: center;
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  /* Wrap the score and warning banner together */
+  #scoreWrapper {
+    position: relative;
+    width: 600px;
+    margin: 0 auto;
+  }
+  /* Score container styling */
+  #scoreContainer {
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 20px 0; /* add some vertical padding */
+  }
+  /* Red banner notification styling - positioned absolutely so it overlays the score area */
+  #shoulderWarning {
+    position: absolute;
+    top: 0; /* adjust this value if needed */
+    left: 0;
+    width: 100%;
+    text-align: center;
+    background-color: #ff4d4d;
+    color: white;
+    padding: 5px;
+    z-index: 10;
+    display: none; /* hidden by default */
+  }
+  /* Feedback box styling */
+  .feedback-box {
+    text-align: center;
+    margin-bottom: 20px;
+  }
 </style>
 
 <div class="dashboard-container">
   {% if current_user.is_authenticated %}
     <h2>Live Workout Feedback</h2>
-
-    <!-- Textual feedback for ROM & Swinging -->
-    <div class="feedback-box" id="live-feed">
-      <p id="rom">Range of Motion: --</p>
-      <p id="swing">Swinging: --</p>
+    <p class="feedback-description">
+      Monitor your form in real-time and receive instant feedback.
+      For example, as you perform a bicep curl, the graph below tracks the movement of your arm.
+      When your movement closely matches the target curve, you earn points!
+    </p>
+    
+    <!-- Score and warning container -->
+    <div id="scoreWrapper">
+      <div id="scoreContainer">
+        Score: <span id="scoreDisplay">0</span> | Reps: <span id="repCount">0</span>
+      </div>
+      <div id="shoulderWarning">
+        Shoulder movement detected! Please keep your shoulders stable during a bicep curl.
+      </div>
     </div>
 
-    <!-- Pitch graph with scrolling background and moving cursor -->
+    <!-- Graph area (you can update the header if desired) -->
     <div class="feedback-box">
-      <h3>Pitch (degrees)</h3>
+      <h3>Score Target</h3>
       <div class="canvas-container">
-        <!-- Background layer: Pre‑drawn pitch pattern -->
+        <!-- Background layer: Pre‑drawn target curve -->
         <canvas id="backgroundCanvas" width="600" height="300"></canvas>
-        <!-- Foreground layer: Cursor showing live sensor pitch -->
+        <!-- Foreground layer: Cursor showing live sensor data -->
         <canvas id="cursorCanvas" width="600" height="300"></canvas>
       </div>
     </div>
@@ -52,17 +99,25 @@
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 
 <script>
+  
 document.addEventListener('DOMContentLoaded', function() {
   // Canvas and animation configuration
   const canvasWidth = 600;
   const canvasHeight = 300;
-  const cycleDuration = 8; // seconds per full cycle:
-                           // 3s at 0, 1s ramp-up, 1s at top, 3s ramp-down
+  const cycleDuration = 6.5; // seconds per full cycle: 3s at 0, 1s ramp-up, 1s at top, 1.5s ramp-down
   const scrollSpeed = canvasWidth / cycleDuration; // pixels per second
-  const noDataThreshold = 1000; // ms: background scrolls only if data received within last 1 sec
+  const noDataThreshold = 1000; // ms: update background only if recent data received
   const minPitch = -20;
   const maxPitch = 110;
   const pitchRange = maxPitch - minPitch; // 130 degrees total
+
+  // Scoring variables
+  let score = 0;
+  const scoreIncrement = 1; // Adjust scoring rate as desired
+  let lastScoreTime = performance.now();
+
+  // Global variable for shoulder movement detection.
+  let shoulderMovementDetected = false;
 
   // Get canvas elements and contexts
   const bgCanvas = document.getElementById('backgroundCanvas');
@@ -70,39 +125,42 @@ document.addEventListener('DOMContentLoaded', function() {
   const cursorCanvas = document.getElementById('cursorCanvas');
   const cursorCtx = cursorCanvas.getContext('2d');
 
+  // Get the shoulder warning banner element.
+  const shoulderWarningBanner = document.getElementById('shoulderWarning');
+
   // Global variables for sensor data and animation
-  let lastDataTime = 0;         // Timestamp of the last received sensor data (in ms)
-  let globalOffset = 0;         // Current horizontal offset for background scrolling
+  let lastDataTime = 0;         // Timestamp of the last sensor data (in ms)
+  let globalOffset = 0;         // Horizontal offset for background scrolling
   let lastTimestamp;            // For calculating delta time between frames
   let currentPitch = 0;         // Latest sensor pitch value
   let smoothedPitch = 0;        // Smoothed pitch for cursor display
 
+  // Load the cursor image (sprite)
+  const spiritImg = new Image();
+  spiritImg.onload = function() {
+    console.log('Sprite image loaded.');
+  };
+  spiritImg.src = "{{ url_for('static', filename='images/sprite.png') }}";
+
   // Easing functions for curved transitions:
   function easeInQuad(t) {
-    // Quadratic ease-in: accelerating from zero velocity
     return t * t;
   }
-
   function easeOutQuad(t) {
-    // Quadratic ease-out: decelerating to zero velocity
     return t * (2 - t);
   }
 
-  // Optional: Draw a grid similar to Chart.js for visual consistency.
+  // Draw a light grid for visual consistency.
   function drawGrid(ctx) {
     const gridColor = 'rgba(0, 0, 0, 0.1)';
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
-    
-    // Draw vertical grid lines every 50px
     for (let x = 0; x <= canvasWidth; x += 50) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvasHeight);
       ctx.stroke();
     }
-    
-    // Draw horizontal grid lines every 50px
     for (let y = 0; y <= canvasHeight; y += 50) {
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -111,36 +169,25 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Function to draw one cycle of the pre-defined pitch pattern.
-  // Pattern:
-  //   - 0 ≤ t < 3 seconds: pitch = 0
-  //   - 3 ≤ t < 4 seconds: ramp up (0→90) with an ease-in quadratic curve
-  //   - 4 ≤ t < 5 seconds: pitch = 90
-  //   - 5 ≤ t < 8 seconds: ramp down (90→0) with an ease-out quadratic curve
+  // Draw one cycle of the pre-defined target pattern.
   function drawCycle(ctx, offsetX) {
     ctx.beginPath();
     for (let x = 0; x <= canvasWidth; x++) {
-      // Compute time (in seconds) along the cycle, adding offset.
+      // Compute time along the cycle.
       let t = ((x + offsetX) / canvasWidth) * cycleDuration;
-      t = t % cycleDuration; // cycle repeats
-
-      // Determine the pitch for this time (in degrees)
+      t = t % cycleDuration;
       let pitch;
       if (t < 3) {
         pitch = 0;
       } else if (t < 4) {
-        // Ramp up from 0 to 90 over 1 second with easing
-        let u = (t - 3) / 1; // normalized [0,1]
+        let u = (t - 3) / 1;
         pitch = 90 * easeInQuad(u);
       } else if (t < 5) {
         pitch = 90;
-      } else {
-        // Ramp down from 90 to 0 over 3 seconds with easing
-        let u = (t - 5) / 3; // normalized [0,1]
+      } else if (t < 6.5) {
+        let u = (t - 5) / 1.5;
         pitch = 90 * (1 - easeOutQuad(u));
       }
-
-      // Map the pitch to a y coordinate on the canvas.
       let y = canvasHeight - ((pitch - minPitch) / pitchRange) * canvasHeight;
       if (x === 0) {
         ctx.moveTo(x, y);
@@ -148,81 +195,160 @@ document.addEventListener('DOMContentLoaded', function() {
         ctx.lineTo(x, y);
       }
     }
-    // Use a Chart.js-like blue tone
     ctx.strokeStyle = 'rgba(75, 192, 192, 1)';
     ctx.lineWidth = 2;
     ctx.stroke();
   }
 
-  // Animate the background (scrolling) only when sensor data is being received.
+  // Animate the background (scrolling target curve).
   function animateBackground(timestamp) {
     if (!lastTimestamp) lastTimestamp = timestamp;
     let dt = (timestamp - lastTimestamp) / 1000; // delta time in seconds
     lastTimestamp = timestamp;
-
-    // Only update the offset if recent sensor data has been received.
     if (timestamp - lastDataTime < noDataThreshold) {
       globalOffset = (globalOffset + scrollSpeed * dt) % canvasWidth;
     }
-    // Clear and redraw the background pattern.
     bgCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-    
-    // Optionally draw a light grid similar to Chart.js
     drawGrid(bgCtx);
-    
     drawCycle(bgCtx, globalOffset);
-    // Draw a second copy shifted left to ensure seamless scrolling.
+    // Draw a second copy shifted left for seamless scrolling.
     bgCtx.save();
     bgCtx.translate(-canvasWidth, 0);
     drawCycle(bgCtx, globalOffset);
     bgCtx.restore();
-
     requestAnimationFrame(animateBackground);
   }
   requestAnimationFrame(animateBackground);
 
-  // Draw the moving cursor (vertical line and circular marker) with smoothing.
+  // Draw the moving cursor (performance indicator) and update score.
   function drawCursor() {
-    // Smoothly interpolate towards the current pitch value.
+    // Smooth the sensor pitch.
     smoothedPitch += (currentPitch - smoothedPitch) * 0.1;
     cursorCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-    
-    // Fixed horizontal position for the cursor (adjust as desired)
     const fixedX = 100;
-    // Map the smoothed pitch to a y coordinate using our pitch range.
+    // Map the sensor value to a vertical position.
     let y = canvasHeight - ((smoothedPitch - minPitch) / pitchRange) * canvasHeight;
     
-    // Draw a vertical line for reference.
-    cursorCtx.beginPath();
-    cursorCtx.moveTo(fixedX, 0);
-    cursorCtx.lineTo(fixedX, canvasHeight);
-    cursorCtx.strokeStyle = 'rgba(75, 192, 192, 1)';
-    cursorCtx.lineWidth = 2;
-    cursorCtx.stroke();
+    // Draw the sprite at 32x32 pixels, centered at (fixedX, y)
+    if (spiritImg.complete && spiritImg.naturalWidth !== 0) {
+      cursorCtx.drawImage(spiritImg, fixedX - 16, y - 16, 32, 32);
+    }
     
-    // Draw a circular marker at the cursor position.
-    cursorCtx.beginPath();
-    cursorCtx.arc(fixedX, y, 5, 0, 2 * Math.PI);
-    cursorCtx.fillStyle = 'rgba(75, 192, 192, 1)';
-    cursorCtx.fill();
+    // Calculate the expected target value at fixedX using the same cycle.
+    let t = ((fixedX + globalOffset) / canvasWidth) * cycleDuration;
+    t = t % cycleDuration;
+    let expectedPitch;
+    if (t < 3) {
+      expectedPitch = 0;
+    } else if (t < 4) {
+      expectedPitch = 90 * easeInQuad((t - 3) / 1);
+    } else if (t < 5) {
+      expectedPitch = 90;
+    } else if (t < 6.5) {
+      expectedPitch = 90 * (1 - easeOutQuad((t - 5) / 1.5));
+    }
+    let expectedY = canvasHeight - ((expectedPitch - minPitch) / pitchRange) * canvasHeight;
+    
+    // Set tolerance: 10% of canvas height.
+    const tolerance = 0.1 * canvasHeight;
+    
+    // Only award points if shoulder movement is NOT detected.
+    if (!shoulderMovementDetected && Math.abs(y - expectedY) < tolerance) {
+      let now = performance.now();
+      score += Math.floor((now - lastScoreTime) * scoreIncrement / 1000);
+      lastScoreTime = now;
+      // Update only the score display.
+      document.getElementById("scoreDisplay").textContent = score;
+    }
     
     requestAnimationFrame(drawCursor);
   }
   requestAnimationFrame(drawCursor);
 
   // Connect to the Socket.IO server to receive sensor data.
-  const socket = io();
-  socket.on('connect', function() {
+// Store aggregated data in an array
+let aggregatedData = [];
+
+// Listen for incoming sensor data
+const socket = io();
+socket.on('connect', function() {
     console.log('Connected to server via Socket.IO.');
-  });
-  socket.on('sensor_data', function(data) {
-    if (data.pitch !== undefined) {
-      currentPitch = data.pitch;
-      // Update the last data timestamp (in ms)
-      lastDataTime = performance.now();
-    }
-  });
 });
+
+let shoulderWarningTimeout;
+
+socket.on('sensor_data', function(data) {
+    if (data.pitch !== undefined) {
+        currentPitch = data.pitch;
+        lastDataTime = performance.now();
+
+        // Append pitch data to the aggregated array
+        aggregatedData.push({
+            timestamp: new Date().toISOString(),
+            pitch: data.pitch,
+            shoulder_movement: data.shoulder_movement || 0,
+            rep_count: data.rep_count || 0
+        });
+    }
+
+    // Handle shoulder movement warning
+    if (data.shoulder_movement !== undefined) {
+        if (data.shoulder_movement > 8) {
+            shoulderMovementDetected = true;
+            shoulderWarningBanner.style.display = "block";
+            clearTimeout(shoulderWarningTimeout);
+            shoulderWarningTimeout = setTimeout(function() {
+                shoulderMovementDetected = false;
+                shoulderWarningBanner.style.display = "none";
+            }, 3000);
+        }
+    }
+
+    // Update rep count in UI
+    if (data.rep_count !== undefined) {
+        document.getElementById("repCount").textContent = data.rep_count;
+    }
+
+    // **Trigger when session ends**
+    print("Data: ", data);
+    if (data.end === true) {
+        console.log("Workout session ended. Sending aggregated data...");
+
+        sendMetricsData({
+            session_id: new Date().getTime(), // Unique session identifier
+            metrics: aggregatedData // Send collected data
+        });
+
+        // Reset aggregated data for next session
+        aggregatedData = [];
+    }
+});
+
+    // Replace with your EC2 instance's public IPv4 DNS or public IP
+  const EC2_SERVER_URL = "http://ec2-184-73-86-153.compute-1.amazonaws.com:5000";
+
+
+function sendMetricsData(aggregatedData) {
+  fetch(`${EC2_SERVER_URL}/save_metrics`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ test: "Hello EC2!" })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error(error));
+  
+  // fetch(`${EC2_SERVER_URL}/save_metrics`, {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(aggregatedData)
+    // })
+    // .then(response => response.json())
+    // .then(data => console.log('Server Response:', data))
+    // .catch(error => console.error('Error:', error));
+}
+
+  });
 </script>
 
 {% endblock %}

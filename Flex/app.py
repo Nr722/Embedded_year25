@@ -5,8 +5,15 @@ from flask_socketio import SocketIO, emit
 import os
 import random
 import time
+import json
+import subprocess
+import os
+
 
 app = Flask(__name__)
+# Define file path (ensure this path exists)
+JSON_FILE_PATH = "/home/ubuntu/metrics.json"
+SCRIPT_PATH = "/home/ubuntu/k_means_clustering.py"
 
 # -----------------------------------------------------------------------------  
 # CONFIG  
@@ -134,24 +141,41 @@ def handle_disconnect():
 # -----------------------------------------------------------------------------
 # BACKGROUND TASK (Optional for testing without the Raspberry Pi)
 # -----------------------------------------------------------------------------
-def background_thread():
-    while True:
-        time.sleep(0.2)
-        data = {
-            'timestamp': time.time(),
-            'pitch': round(random.uniform(0, 90), 2)
-        }
-        print("Emitting dummy data:", data)
-        socketio.emit('sensor_data', data)
-
-# Uncomment to test dummy data:
-# socketio.start_background_task(background_thread)
-
-# -----------------------------------------------------------------------------
-# MAIN
-# -----------------------------------------------------------------------------
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
+# -----------------------------------------------------------------------------
+@app.route('/save_metrics', methods=['POST'])
+def save_metrics():
+    try:
+        data = request.json  # Get JSON payload from the request
+
+        # Save JSON data to file (overwrite existing file)
+        with open(JSON_FILE_PATH, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+
+        # Run k_means_clustering.py
+        subprocess.run(["python3", SCRIPT_PATH], check=True)
+
+        return jsonify({"status": "success", "message": "Metrics saved and clustering script executed."})
     
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# Handle incoming data from WebSocket
+@socketio.on('sensor_data')
+def handle_sensor_data(data):
+    try:
+        # Save and process data whenever received via WebSocket
+        with open(JSON_FILE_PATH, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+
+        # Trigger K-Means script
+        subprocess.run(["python3", SCRIPT_PATH], check=True)
+
+        print("Updated metrics.json and executed clustering script.")
+    
+    except Exception as e:
+        print("Error saving metrics:", str(e))
