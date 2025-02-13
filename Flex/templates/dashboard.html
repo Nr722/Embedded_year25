@@ -51,6 +51,19 @@
     text-align: center;
     margin-bottom: 20px;
   }
+  /* Style for metrics summary */
+  #metricsResults {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 16px;
+    color: #333;
+  }
+  #metricsResults h3 {
+    margin-bottom: 10px;
+  }
+  #metricsResults p {
+    margin: 4px 0;
+  }
 </style>
 
 <div class="dashboard-container">
@@ -87,6 +100,11 @@
     <div id="serverOutput" style="text-align: center; margin-top: 20px; font-size: 16px; color: #333;">
       <!-- This text will be updated by JavaScript -->
     </div>
+    
+    <!-- New div to display aggregated metrics and recommendations -->
+    <div id="metricsResults">
+      <!-- Metrics will be displayed here -->
+    </div>
   {% else %}
     <div class="please-login-message">
       <h2>Welcome to FLEX</h2>
@@ -101,7 +119,7 @@
 <!-- Include Socket.IO -->
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script src="{{ url_for('static', filename='rep_data_processor.js') }}"></script>
-
+<script src="{{ url_for('static', filename='set_analysis.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -143,12 +161,8 @@ document.addEventListener('DOMContentLoaded', function() {
   spiritImg.src = "{{ url_for('static', filename='images/sprite.png') }}";
 
   // Easing functions
-  function easeInQuad(t) {
-    return t * t;
-  }
-  function easeOutQuad(t) {
-    return t * (2 - t);
-  }
+  function easeInQuad(t) { return t * t; }
+  function easeOutQuad(t) { return t * (2 - t); }
 
   function drawGrid(ctx) {
     const gridColor = 'rgba(0, 0, 0, 0.1)';
@@ -261,10 +275,10 @@ document.addEventListener('DOMContentLoaded', function() {
   let aggregatedData = [];
   let shoulderWarningTimeout;
 
-// Create a global rep processor instance
-let repProcessor = new RepDataProcessor();
+  // Create a global rep processor instance
+  let repProcessor = new RepDataProcessor();
 
-socket.on('sensor_data', function(data) {
+  socket.on('sensor_data', function(data) {
     // Update current pitch for animation if provided
     if (data.pitch !== undefined) {
         currentPitch = data.pitch;
@@ -301,99 +315,113 @@ socket.on('sensor_data', function(data) {
     if (data.end === 1) {
         console.log("Workout set ended. Sending all rep data...");
         let aggregatedMetrics = repProcessor.getAggregatedData();
-        sendMetricsData({
-            session_id: new Date().getTime(),
-            metrics: aggregatedMetrics
-        });
+        displayLocalAnalysis(aggregatedMetrics);
+        // sendMetricsData({
+        //     session_id: new Date().getTime(),
+        //     metrics: aggregatedMetrics
+        // });
         repProcessor.reset();  // Reset after sending the entire set
+    
     }
-});
-
+  });
 
   // Your EC2 server URL
-// Your EC2 server URL
-const EC2_SERVER_URL = "http://ec2-44-201-164-184.compute-1.amazonaws.com:5000";
+  const EC2_SERVER_URL = "http://ec2-44-201-164-184.compute-1.amazonaws.com:5000";
 
-// Define the polling function to check if processed results are ready
-function pollProcessedResults() {
-  fetch(EC2_SERVER_URL + "/get_processed_results", { method: "GET" })
+  // Define the polling function to check if processed results are ready
+  function pollProcessedResults() {
+    fetch(EC2_SERVER_URL + "/get_processed_results", { method: "GET" })
+      .then(response => response.json())
+      .then(processedData => {
+        if (processedData.status === "processing") {
+          // Results not ready; poll again after a delay
+          setTimeout(pollProcessedResults, 2000);
+        } else {
+          console.log("values in processed data: ", processedData);
+          // Processing complete; display results and metrics
+          displayProcessedResults(processedData);
+          document.getElementById("serverOutput").textContent = "Processing complete!";
+        }
+      })
+      .catch(error => {
+        console.error("Error polling processed results:", error);
+        document.getElementById("serverOutput").textContent = "Error fetching processed results.";
+      });
+  }
+
+  function sendMetricsData(aggregatedData) {
+    const serverOutput = document.getElementById("serverOutput");
+    serverOutput.textContent = "Processing data...";
+
+    fetch(EC2_SERVER_URL + "/save_metrics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(aggregatedData)
+    })
     .then(response => response.json())
-    .then(processedData => {
-      if (processedData.status === "processing") {
-        // Results not ready; poll again after a delay
-        setTimeout(pollProcessedResults, 2000);
-      } else {
-        console.log("values in processed data: ", processedData);
-        // Processing complete; display results
-        displayProcessedResults(processedData["processed_reps"]);
-        document.getElementById("serverOutput").textContent = "Processing complete!";
-      }
+    .then(data => {
+        console.log("Server Response:", data);
+        if (data.status === "processing" || data.status === "success") {
+            serverOutput.textContent = "Processing complete! Fetching results...";
+            // Start polling until the processed results are ready
+            pollProcessedResults();
+        } else {
+            serverOutput.textContent = "Error: " + data.message;
+        }
     })
     .catch(error => {
-      console.error("Error polling processed results:", error);
-      document.getElementById("serverOutput").textContent = "Error fetching processed results.";
+        console.error("Error:", error);
+        serverOutput.textContent = "Error sending data.";
     });
-}
+  }
 
-function sendMetricsData(aggregatedData) {
-  const serverOutput = document.getElementById("serverOutput");
-  serverOutput.textContent = "Processing data...";
+  function displayLocalAnalysis(aggregatedData) {
+    // Update status
+    const serverOutput = document.getElementById("serverOutput");
+    serverOutput.textContent = "Local analysis complete!";
 
-  fetch(EC2_SERVER_URL + "/save_metrics", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(aggregatedData)
-  })
-  .then(response => response.json())
-  .then(data => {
-      console.log("Server Response:", data);
-
-      if (data.status === "processing" || data.status === "success") {
-          serverOutput.textContent = "Processing complete! Fetching results...";
-          // Start polling until the processed results are ready
-          pollProcessedResults();
-      } else {
-          serverOutput.textContent = "Error: " + data.message;
-      }
-  })
-  .catch(error => {
-      console.error("Error:", error);
-      serverOutput.textContent = "Error sending data.";
-  });
-}
-
-
-function displayProcessedResults(data) {
+    // Display per‑rep data
     const resultsContainer = document.getElementById("processedResults");
-    resultsContainer.innerHTML = "<h3>Processed Results:</h3>";
-
-    let reps = [];
-    
-    // Check if data["processed_reps"] exists and is an array.
-    if (data["processed_reps"]) {
-        if (Array.isArray(data["processed_reps"])) {
-            reps = data["processed_reps"];
-        } else {
-            // If it's not an array, attempt to convert it to an array.
-            reps = [data["processed_reps"]];
-        }
+    resultsContainer.innerHTML = "<h3>Processed Reps:</h3>";
+    if (aggregatedData.reps && aggregatedData.reps.length > 0) {
+      aggregatedData.reps.forEach(rep => {
+        resultsContainer.innerHTML += `
+          <p>
+            // Rep ${rep.rep_count}: Range of Motion: ${rep.max_pitch.toFixed(2)}, 
+            // Peak Upward Velocity: ${rep.max_gz_up.toFixed(2)}, 
+            // Peak Downward Velocity: ${rep.max_gz_down.toFixed(2)}, 
+            // Shoulder Movement: ${rep.max_az.toFixed(2)}
+          </p>`;
+      });
     } else {
-        resultsContainer.innerHTML += `<p>Error: ${data["error"] || "No processed reps available."}</p>`;
-        return;
+      resultsContainer.innerHTML += `<p>No processed reps available.</p>`;
     }
 
-    // Now safely iterate over the reps array.
-    if (reps.length > 0) {
-        reps.forEach(rep => {
-          console.log(rep);
-            let repInfo = `<p>Rep ${rep["rep_count"]}: Cluster ${rep["cluster"]}, Max Pitch: ${rep.max_pitch}, Max Gz Up: ${rep.max_gz_up}, Max Gz Down: ${rep.max_gz_down}, Max Az: ${rep.max_az}</p>`;
-            resultsContainer.innerHTML += repInfo;
-        });
-    } else {
-        resultsContainer.innerHTML += `<p>No processed reps available.</p>`;
-    }
-}
+    // Compute set metrics and recommendations.
+    const analysis = computeSetMetrics(aggregatedData);
+    const metricsContainer = document.getElementById("metricsResults");
+    metricsContainer.innerHTML = "<h3>Set Metrics & Recommendations:</h3>";
 
+    if (analysis) {
+      // Display each feature's metrics.
+      for (const feat in analysis.metrics) {
+        const featData = analysis.metrics[feat];
+        metricsContainer.innerHTML += `<p>${feat}: early = ${featData.early.toFixed(
+          2
+        )}, late = ${featData.late.toFixed(2)} ( ${featData.trend} by ${Math.abs(
+          featData.difference
+        ).toFixed(2)} )</p>`;
+      }
+
+      // Display recommendations.
+      metricsContainer.innerHTML += "<h4>Recommendations:</h4>";
+      analysis.recommendations.forEach(rec => {
+        metricsContainer.innerHTML += `<p>${rec}</p>`;
+      });
+    } else {
+      metricsContainer.innerHTML += "<p>Not enough data to compute metrics.</p>";
+    }
+  }
 
 });
 </script>
