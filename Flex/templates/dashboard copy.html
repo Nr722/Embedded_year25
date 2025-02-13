@@ -94,14 +94,10 @@
       <a href="{{ url_for('login') }}" class="login-btn">Log In Now</a>
     </div>
   {% endif %}
-  <div id="processedResults" style="text-align: center; margin-top: 20px;"></div>
-
 </div>
 
 <!-- Include Socket.IO -->
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
-<script src="{{ url_for('static', filename='rep_data_processor.js') }}"></script>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -261,116 +257,66 @@ document.addEventListener('DOMContentLoaded', function() {
   let aggregatedData = [];
   let shoulderWarningTimeout;
 
-// Create a global rep processor instance
-let repProcessor = new RepDataProcessor();
-
-socket.on('sensor_data', function(data) {
-    // Update current pitch for animation if provided
+  socket.on('sensor_data', function(data) {
     if (data.pitch !== undefined) {
-        currentPitch = data.pitch;
-        lastDataTime = performance.now();
+      currentPitch = data.pitch;
+      lastDataTime = performance.now();
     }
 
-    // Process shoulder movement warnings (existing logic)
-    if (data.shoulder_movement !== undefined && data.shoulder_movement > 8) {
+    if (data.shoulder_movement !== undefined) {
+      if (data.shoulder_movement > 8) {
         shoulderMovementDetected = true;
         shoulderWarningBanner.style.display = "block";
         clearTimeout(shoulderWarningTimeout);
         shoulderWarningTimeout = setTimeout(function() {
-            shoulderMovementDetected = false;
-            shoulderWarningBanner.style.display = "none";
+          shoulderMovementDetected = false;
+          shoulderWarningBanner.style.display = "none";
         }, 3000);
+      }
     }
 
-    // Update rep count display
     if (data.rep_count !== undefined) {
-        document.getElementById("repCount").textContent = data.rep_count;
+      document.getElementById("repCount").textContent = data.rep_count;
     }
 
-    // Update the rep processor with available sensor data
-    if (data.pitch !== undefined && data.gyro !== undefined && data.shoulder_movement !== undefined) {
-        repProcessor.update(data.pitch, data.gyro, data.shoulder_movement);
-    }
+    // You might want to push data to aggregatedData here if needed:
+    // aggregatedData.push(data);
 
-    // Store each rep when rep_count increases
-    if (data.rep_count !== undefined && data.rep_count > repProcessor.reps.length) {
-        repProcessor.storeRep(data.rep_count);
-    }
-
-    // When an explicit workout end flag is received, send the aggregated data
+    // Trigger when session ends
     if (data.end === 1) {
-        console.log("Workout set ended. Sending all rep data...");
-        let aggregatedMetrics = repProcessor.getAggregatedData();
-        sendMetricsData({
-            session_id: new Date().getTime(),
-            metrics: aggregatedMetrics
-        });
-        repProcessor.reset();  // Reset after sending the entire set
+      console.log("Workout session ended. Sending aggregated data...");
+      sendMetricsData({
+          session_id: new Date().getTime(),
+          metrics: aggregatedData
+      });
+      aggregatedData = [];
     }
-});
-
+  });
 
   // Your EC2 server URL
   const EC2_SERVER_URL = "http://ec2-44-201-164-184.compute-1.amazonaws.com:5000";
 
   // Updated sendMetricsData function
   function sendMetricsData(aggregatedData) {
+    // Display waiting message
     const serverOutput = document.getElementById("serverOutput");
-    serverOutput.textContent = "Processing data...";
+    serverOutput.textContent = "Waiting for data from EC2 server...";
 
-    fetch(EC2_SERVER_URL + "/save_metrics", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(aggregatedData)
+    fetch(`${EC2_SERVER_URL}/save_metrics`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aggregatedData)
     })
-
     .then(response => response.json())
     .then(data => {
-        console.log("Server Response:", data);
-
-        if (data.status === "success") {
-            serverOutput.textContent = "Processing complete! Fetching results...";
-
-            // Fetch processed results
-            fetch(EC2_SERVER_URL + "/get_processed_results",
-              {method: "GET"}
-            )
-              .then(response => response.json())
-              .then(processedData => {
-                  console.log("Processed Data:", processedData);
-                  displayProcessedResults(processedData);
-              })
-              .catch(error => {
-                  console.error("Error fetching processed results:", error);
-                  serverOutput.textContent = "Error fetching processed results.";
-              });
-
-        } else {
-            serverOutput.textContent = "Error: " + data.message;
-        }
+        console.log('Server Response:', data);
+        serverOutput.textContent = "Received data: " + JSON.stringify(data);
     })
     .catch(error => {
-        console.error("Error:", error);
-        serverOutput.textContent = "Error sending data.";
+        console.error('Error:', error);
+        serverOutput.textContent = "Error: " + error;
     });
-}
-
-// Function to display results
-function displayProcessedResults(data) {
-    const resultsContainer = document.getElementById("processedResults");
-    resultsContainer.innerHTML = "<h3>Processed Results:</h3>";
-
-    if (data.processed_reps) {
-        data.processed_reps.forEach(rep => {
-            let repInfo = `<p>Rep ${rep.rep_count}: Cluster ${rep.cluster}, Max Pitch: ${rep.max_pitch}, Max Gz Up: ${rep.max_gz_up}, Max Gz Down: ${rep.max_gz_down}, Max Az: ${rep.max_az}</p>`;
-            resultsContainer.innerHTML += repInfo;
-        });
-    } else {
-        resultsContainer.innerHTML += `<p>Error: ${data.error}</p>`;
-    }
-}
-
-
+  }
 });
 </script>
 

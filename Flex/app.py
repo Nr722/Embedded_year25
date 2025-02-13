@@ -2,18 +2,20 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, current_user, logout_user, login_required
 from flask_socketio import SocketIO, emit
-import os
-import random
-import time
-import json
-import subprocess
-import os
-
+import os, random, time, json, subprocess
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
+
+
+app = Flask(__name__)  # Instantiate app first
+CORS(app)            # Then enable CORS on the app
+
 # Define file path (ensure this path exists)
 JSON_FILE_PATH = "/home/ubuntu/metrics.json"
 SCRIPT_PATH = "/home/ubuntu/k_means_clustering.py"
+OUTPUT_FILE_PATH = "/home/ubuntu/processed_output.json"
 
 # -----------------------------------------------------------------------------  
 # CONFIG  
@@ -150,32 +152,43 @@ if __name__ == '__main__':
 @app.route('/save_metrics', methods=['POST'])
 def save_metrics():
     try:
-        data = request.json  # Get JSON payload from the request
-
-        # Save JSON data to file (overwrite existing file)
+        # Save incoming data to metrics.json
+        data = request.json
+        print("Received data:", data)  # This should print in the server console
         with open(JSON_FILE_PATH, "w") as json_file:
             json.dump(data, json_file, indent=4)
 
-        # Run k_means_clustering.py
-        subprocess.run(["python3", SCRIPT_PATH], check=True)
+        # Run the processing script
+        result = subprocess.run(["python3", SCRIPT_PATH], capture_output=True, text=True)
+        print("Processing Script Output:", result.stdout)
+        print("Processing Script Error (if any):", result.stderr)
 
-        return jsonify({"status": "success", "message": "Metrics saved and clustering script executed."})
-    
+        # Check if processing script created an output file
+        if os.path.exists(OUTPUT_FILE_PATH):
+            with open(OUTPUT_FILE_PATH, "r") as output_file:
+                processed_data = json.load(output_file)
+        else:
+            processed_data = {"error": "Processing script did not generate output"}
+
+        return jsonify({
+            "status": "success",
+            "message": "Metrics saved and processed successfully",
+            "processed_data": processed_data
+        })
+
     except Exception as e:
+        print("Error in /save_metrics:", e)
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# Handle incoming data from WebSocket
-@socketio.on('sensor_data')
-def handle_sensor_data(data):
+@app.route('/get_processed_results', methods=['GET'])
+def get_processed_results():
+    """Returns the processed data from the Python script"""
     try:
-        # Save and process data whenever received via WebSocket
-        with open(JSON_FILE_PATH, "w") as json_file:
-            json.dump(data, json_file, indent=4)
-
-        # Trigger K-Means script
-        subprocess.run(["python3", SCRIPT_PATH], check=True)
-
-        print("Updated metrics.json and executed clustering script.")
-    
+        if os.path.exists(OUTPUT_FILE_PATH):
+            with open(OUTPUT_FILE_PATH, "r") as output_file:
+                processed_data = json.load(output_file)
+            return jsonify(processed_data)
+        else:
+            return jsonify({"error": "Processed data not found"}), 404
     except Exception as e:
-        print("Error saving metrics:", str(e))
+        return jsonify({"error": str(e)}), 500
