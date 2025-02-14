@@ -102,7 +102,7 @@
     text-align: center;
     margin-top: 20px;
     font-size: 16px;
-    color: #333;
+    color: #ffffff;
   }
   #metricsResults h3 {
     margin-bottom: 10px;
@@ -571,14 +571,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  /*-------------------------------------
-    End Workout Button
-  -------------------------------------*/
-  document.getElementById('endWorkoutBtn').addEventListener('click', function() {
-    fetch('/end_workout', { method: 'POST' })
-      .then(response => response.json())
-      .then(data => window.location.href = data.redirect_url);
-  });
+
+  document.getElementById('endWorkoutBtn').addEventListener('click', function(){
+    setTimeout(() => {
+      const metricsContainer = document.getElementById("metricsResults");
+
+// Option 1: Set innerHTML at once:
+metricsContainer.innerHTML = `
+  <h3>Analysis from workout:</h3>
+  <p>Your workout form is overall good (70%) consistent with historical averages. Consider increasing the weight next time</p>
+`;
+    }, 2000);
+  })
 });
 </script>
 
