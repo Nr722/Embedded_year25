@@ -64,6 +64,23 @@
   #metricsResults p {
     margin: 4px 0;
   }
+  #endWorkoutBtn {
+    display: block;
+    margin: 1rem auto;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-family: 'Press Start 2P', cursive;
+    color: #fff;
+    background: #ff4d00;
+    border: none;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  #endWorkoutBtn:hover {
+    background: #ffea00;
+    color: #000;
+  }
 </style>
 
 <div class="dashboard-container">
@@ -101,6 +118,7 @@
       <!-- This text will be updated by JavaScript -->
     </div>
     
+    <button id="endWorkoutBtn">End Workout</button>
     <!-- New div to display aggregated metrics and recommendations -->
     <div id="metricsResults">
       <!-- Existing text-based metrics will be appended here by JS. -->
@@ -429,6 +447,41 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     } else {
       metricsContainer.innerHTML += "<p>Not enough data to compute metrics.</p>";
+    }
+  }
+  document.getElementById("endWorkoutBtn").addEventListener("click", function(){
+    fetch(`${EC2_SERVER_URL}/end_workout`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status ==="success"){
+        console.log("Workout session ended. Processed data: ", data.processed_data);
+      }
+    })
+    .catch(error => console.error("Error fetching processsed historical data: ", error));
+  });
+
+  function displayProcessedData(processedData){
+    const feedbackContainer = document.getElementById("feedbackContainer");
+    feedbackContainer.innerHTML = "";
+    if (data.status === "success" && data.processed_data){
+      const critiques = data.processed_data.critiques;
+      if(critiques && critiques.length > 0){
+        critiques.forEach((critique, index) => {
+          const critiqueElement = document.createElement("div");
+          critiqueElement.classList.add("critique-item");
+          critiqueElement.innerHTML = `<strong>Feedback ${index + 1}:</strong>${critique}`;
+          feedbackContainer.appendChild(critiqueElement);
+        });
+      }
+      else{
+        feedbackContainer.innerHTML = "<p>No critiques available.</p>";
+      }
+    }
+    else{
+      feedbackContainer.innerHTML = "<p>Error fetching processed data.</p>";
     }
   }
 });
