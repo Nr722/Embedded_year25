@@ -1,18 +1,29 @@
 import requests
 
+# Firebase Realtime Database URL
 db = "https://dnstest-2487b-default-rtdb.europe-west1.firebasedatabase.app/"
-path = "workouts.json"
 
-def get_fire(timestamp=None):
-    """Fetches workout data from the Firebase database."""
-    # Construct request URL
-    request_url = db + "workouts.json"
-    if timestamp:
-        request_url = f"{db}workouts/{timestamp}.json"
+def get_fire(date=None, set_number=None):
+    """Fetch workout data from Firebase.
     
+    Args:
+        date (str): (Optional) Specific date in 'YYYY-mm-dd' format. If not provided, fetches all dates.
+        set_number (int): (Optional) Specific set number to fetch (e.g., 1 for 'set1'). If not provided, fetches all sets for the given date.
+    
+    Returns:
+        dict: The fetched data from Firebase.
+    """
+    # Construct the URL
+    if date and set_number:
+        request_url = f"{db}{date}/set{set_number}.json"
+    elif date:
+        request_url = f"{db}{date}.json"
+    else:
+        request_url = f"{db}.json"
+
     print(f"Fetching data from: {request_url}")  # Debugging log
     
-    # Make the request
+    # Make the GET request
     response = requests.get(request_url)
     
     # Handle the response
@@ -27,18 +38,5 @@ def get_fire(timestamp=None):
     else:
         raise ConnectionError(f"Could not access database: {response.status_code} - {response.text}")
 
-# Example call: Fetch all data
-all_data = get_fire()
 
-def parse_workout_data(workout_data):
-    """Parses workout data to extract all reps and their fields."""
-    for set_key, reps in workout_data.items():
-        print(f"Set: {set_key}")
-        for rep_key, rep_data in reps.items():
-            print(f"  Rep: {rep_key}, Data: {rep_data}")
-
-# Example usage
-timestamp = "1"  # Replace with an actual timestamp
-specific_data = get_fire(timestamp)
-if specific_data:
-    parse_workout_data(specific_data)
+print(get_fire())
