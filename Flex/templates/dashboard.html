@@ -479,20 +479,27 @@ document.addEventListener('DOMContentLoaded', function() {
       metricsContainer.innerHTML += "<p>Not enough data to compute metrics.</p>";
     }
   }
-  document.getElementById("endWorkoutBtn").addEventListener("click", function(){
-    fetch(`${EC2_SERVER_URL}/end_workout`, {
-      method: "GET",
+  document.getElementById("endWorkoutBtn").addEventListener("click", function() {
+    const FIREBASE_URL = "https://dnstest-2487b-default-rtdb.europe-west1.firebasedatabase.app/.json"; // Replace with your Firebase URL
+
+    fetch(FIREBASE_URL, {
+      method: "GET", // Change to "POST" if Firebase expects a POST request
       headers: { "Content-Type": "application/json" }
     })
     .then(response => response.json())
     .then(data => {
-      if (data.status ==="success"){
-        console.log("Workout session ended. Processed data: ", data.processed_data);
+      if (data) {
+        console.log("Workout session ended. Firebase response:", data);
+        document.getElementById("serverOutput").textContent = "Workout successfully ended!";
+      } else {
+        document.getElementById("serverOutput").textContent = "No response from Firebase.";
       }
     })
-    .catch(error => console.error("Error fetching processsed historical data: ", error));
+    .catch(error => {
+      console.error("Error ending workout session via Firebase:", error);
+      document.getElementById("serverOutput").textContent = "Error ending workout.";
+    });
   });
-
   function displayProcessedData(processedData){
     const feedbackContainer = document.getElementById("feedbackContainer");
     feedbackContainer.innerHTML = "";
