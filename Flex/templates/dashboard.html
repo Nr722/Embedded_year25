@@ -355,8 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (data.end === 1) {
       console.log("Workout set ended. Running local analysis & sending data...");
       let aggregatedMetrics = repProcessor.getAggregatedData();
-
-      
+      sendMetricsData(aggregatedMetrics);
       displayLocalAnalysis(aggregatedMetrics);
 
       
@@ -458,7 +457,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     metricsContainer.innerHTML = `
       <h3>Analysis from workout:</h3>
-      <p>Your workout form is overall good (70%) consistent with historical averages. Consider increasing the weight next time</p>
+      <p>                    Your shoulder involvement in 'fatigued' reps is higher than usual. 
+                    You may be compensating with the shoulder. Focus on strict technique and biceps isolation.</p>
     `;
 
     const FIREBASE_URL = "https://dnstest-2487b-default-rtdb.europe-west1.firebasedatabase.app/.json"; // Replace with your Firebase URL

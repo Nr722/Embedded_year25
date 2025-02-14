@@ -2,7 +2,6 @@ import csv
 import time
 import math
 from smbus2 import SMBus
-from filterpy.kalman import KalmanFilter
 import numpy as np
 
 FXOS8700_ADDR = 0x1F

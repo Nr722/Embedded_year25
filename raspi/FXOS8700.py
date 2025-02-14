@@ -1,7 +1,6 @@
 import time
 import math
 from smbus2 import SMBus
-from filterpy.kalman import KalmanFilter
 import numpy as np
 
 
