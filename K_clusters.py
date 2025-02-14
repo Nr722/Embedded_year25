@@ -269,3 +269,87 @@ if new_perf_averages.get('good') is not None and hist_perf_averages.get('good') 
         print("  - For your 'good' reps, the peak upward velocity is slightly lower than usual. You might consider incorporating power or speed work to improve explosive strength.")
 
 # You can add additional conditions and recommendations as desired.
+
+# Example extended logic for generating user feedback
+
+# 1. Check if the ratio of fatigued reps is higher than historical
+if new_perf_ratio.get('fatigued', 0) > hist_perf_ratio.get('fatigued', 0):
+    print("  - You performed a higher percentage of fatigued reps compared to your historical data. ")
+    print("    Consider reviewing your recovery protocols or adjusting your workout intensity.")
+else:
+    print("  - Your percentage of fatigued reps is in line with or below your historical average. ")
+    print("    Keep up the good work on recovery.")
+
+# 2. Compare averages for 'good' reps: 
+#    Peak upward velocity, range of motion, shoulder movement, etc.
+if ('good' in new_perf_averages.index) and ('good' in hist_perf_averages.index):
+    
+    # 2a. Peak upward velocity
+    if new_perf_averages.loc['good', 'peak_ang_vel_up'] < hist_perf_averages.loc['good', 'peak_ang_vel_up']:
+        print("  - For your 'good' reps, the peak upward velocity is slightly lower than usual.")
+        print("    You might consider incorporating power or speed work to improve explosive strength.")
+    
+    # 2b. Range of Motion
+    if new_perf_averages.loc['good', 'range_of_motion'] < 0.95 * hist_perf_averages.loc['good', 'range_of_motion']:
+        print("  - Your average range of motion for 'good' reps has decreased more than 5% compared to your historical average.")
+        print("    This could indicate tightness or fatigue. Make sure to include mobility and warm-up exercises.")
+        
+    # 2c. Shoulder Movement
+    if new_perf_averages.loc['good', 'shoulder_movement'] > 1.05 * hist_perf_averages.loc['good', 'shoulder_movement']:
+        print("  - Your shoulder movement for 'good' reps is higher than your historical average.")
+        print("    This might indicate you are compensating with your shoulder. Focus on strict form to isolate the biceps.")
+
+# 3. Compare averages for 'fatigued' reps: 
+#    This can indicate how form deteriorates once fatigued.
+if ('fatigued' in new_perf_averages.index) and ('fatigued' in hist_perf_averages.index):
+    
+    # 3a. Range of Motion
+    if new_perf_averages.loc['fatigued', 'range_of_motion'] < hist_perf_averages.loc['fatigued', 'range_of_motion']:
+        print("  - Your range of motion in 'fatigued' reps is lower than your historical norm.")
+        print("    This suggests your form breaks down more than usual once fatigued. Consider lighter weights or more rest.")
+
+    # 3b. Shoulder Movement
+    if new_perf_averages.loc['fatigued', 'shoulder_movement'] > hist_perf_averages.loc['fatigued', 'shoulder_movement']:
+        print("  - Your shoulder involvement in 'fatigued' reps is higher than usual.")
+        print("    You may be compensating with the shoulder. Focus on strict technique and biceps isolation.")
+    
+    # 3c. Downward Velocity
+    if new_perf_averages.loc['fatigued', 'peak_ang_vel_down'] > hist_perf_averages.loc['fatigued', 'peak_ang_vel_down']:
+        print("  - Your peak downward velocity on fatigued reps is higher than historical averages.")
+        print("    A faster eccentric might lead to less muscle control or potential injury risk. Try slowing the negative phase.")
+
+# 4. Provide general coaching cues or observations
+print("\nAdditional Observations:")
+# Example: If the difference in 'fatigued' ratio is quite large, emphasize rest or technique:
+fatigued_diff = (new_perf_ratio.get('fatigued', 0) - hist_perf_ratio.get('fatigued', 0)) * 100
+if fatigued_diff > 10:  # e.g., a 10% higher fatigued ratio
+    print(f"  - There's a significant (+{fatigued_diff:.1f}%) jump in fatigued reps. Consider shorter sets, longer rest, or adjusting weight.")
+    
+# You can also detect improvements:
+if fatigued_diff < -5:  # e.g., 5% lower fatigued ratio
+    print(f"  - Nice improvement! You reduced your fatigued reps by {-fatigued_diff:.1f}%. Keep up the consistent training and recovery.")
+
+# 5. Possibly integrate thresholds or a "flag" for bigger changes
+# You can define your own thresholds for each metric to highlight significant changes
+change_thresholds = {
+    'range_of_motion': 0.90,  # 10% drop
+    'peak_ang_vel_up': 0.90,  # 10% drop
+    'peak_ang_vel_down': 1.10, # 10% higher => faster negative
+    'shoulder_movement': 1.10  # 10% more shoulder movement
+}
+
+# Example of comparing each metric in a loop (pseudocode)
+for cluster_label in ['good', 'fatigued']:
+    if cluster_label in new_perf_averages.index and cluster_label in hist_perf_averages.index:
+        for metric, threshold in change_thresholds.items():
+            current_val = new_perf_averages.loc[cluster_label, metric]
+            hist_val = hist_perf_averages.loc[cluster_label, metric]
+            
+            if metric in ['range_of_motion', 'peak_ang_vel_up']: 
+                # If new is less than threshold * old => significant drop
+                if current_val < threshold * hist_val:
+                    print(f"  - [{cluster_label.upper()}] {metric} is significantly below your historical average. Consider focusing on technique and strength.")
+            else:
+                # If new is greater than threshold * old => significant increase
+                if current_val > threshold * hist_val:
+                    print(f"  - [{cluster_label.upper()}] {metric} has significantly increased. You might be compensating or risking form breakdown.")

@@ -97,14 +97,21 @@
     </div>
 
     <!-- New div to display EC2 server response -->
-    <div id="serverOutput" style="text-align: center; margin-top: 20px; font-size: 16px; color: #333;">
+    <div id="serverOutput" style="text-align: center; margin-top: 20px; font-size: 16px; color: #ffffff;">
       <!-- This text will be updated by JavaScript -->
     </div>
     
     <!-- New div to display aggregated metrics and recommendations -->
     <div id="metricsResults">
-      <!-- Metrics will be displayed here -->
+      <!-- Existing text-based metrics will be appended here by JS. -->
+      <canvas id="repComparisonChart" width="600" height="400"></canvas>
     </div>
+    <div id="metricsResults">
+      <!-- Existing text-based metrics will be appended here by JS. -->
+      <canvas id="repComparisonChart" width="600" height="400"></canvas>
+    </div>
+    
+    
   {% else %}
     <div class="please-login-message">
       <h2>Welcome to FLEX</h2>
@@ -120,6 +127,8 @@
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script src="{{ url_for('static', filename='rep_data_processor.js') }}"></script>
 <script src="{{ url_for('static', filename='set_analysis.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='bar_chart.js') }}"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -286,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Process shoulder movement warnings (existing logic)
-    if (data.shoulder_movement !== undefined && data.shoulder_movement > 8) {
+    if (data.shoulder_movement !== undefined && data.shoulder_movement > 15) {
         shoulderMovementDetected = true;
         shoulderWarningBanner.style.display = "block";
         clearTimeout(shoulderWarningTimeout);
@@ -401,9 +410,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const analysis = computeSetMetrics(aggregatedData);
     const metricsContainer = document.getElementById("metricsResults");
     metricsContainer.innerHTML = "<h3>Set Metrics & Recommendations:</h3>";
-
+    
     if (analysis) {
-      // Display each feature's metrics.
       for (const feat in analysis.metrics) {
         const featData = analysis.metrics[feat];
         metricsContainer.innerHTML += `<p>${feat}: early = ${featData.early.toFixed(
@@ -417,12 +425,12 @@ document.addEventListener('DOMContentLoaded', function() {
       metricsContainer.innerHTML += "<h4>Recommendations:</h4>";
       analysis.recommendations.forEach(rec => {
         metricsContainer.innerHTML += `<p>${rec}</p>`;
+        displayBarChart(analysis.metrics, metricsContainer, "repComparisonChart");
       });
     } else {
       metricsContainer.innerHTML += "<p>Not enough data to compute metrics.</p>";
     }
   }
-
 });
 </script>
 
