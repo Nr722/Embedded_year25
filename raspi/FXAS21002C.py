@@ -5,7 +5,6 @@ from smbus2 import SMBus
 from filterpy.kalman import KalmanFilter
 import numpy as np
 
-# Sensor Addresses (Ensure you have these defined)
 FXOS8700_ADDR = 0x1F
 FXAS21002_ADDR = 0x21
 FXOS8700_CTRL_REG1 = 0x2A
@@ -21,9 +20,9 @@ class FXAS21002C:
         self.gyro_offset = [0, 0, 0]
 
     def initialize(self):
-        self.bus.write_byte_data(FXAS21002_ADDR, FXAS21002_CTRL_REG1, 0x00)  # Standby
-        self.bus.write_byte_data(FXAS21002_ADDR, FXAS21002_CTRL_REG1, 0x0E)  # Set ODR and enable
-        self.bus.write_byte_data(FXAS21002_ADDR, 0x0D, 0x03)  # Set full-scale range to ±250 dps
+        self.bus.write_byte_data(FXAS21002_ADDR, FXAS21002_CTRL_REG1, 0x00)  
+        self.bus.write_byte_data(FXAS21002_ADDR, FXAS21002_CTRL_REG1, 0x0E)  
+        self.bus.write_byte_data(FXAS21002_ADDR, 0x0D, 0x03)  
 
     def calibrate(self, samples=100):
         """Calibrate gyroscope offsets."""

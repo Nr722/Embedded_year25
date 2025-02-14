@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Optional: Inline styles for canvas layering and notification banner (can be moved to style.css if desired) -->
 <style>
-  /* Canvas container specific to the graph */
   .canvas-container {
     position: relative;
     width: 600px;
@@ -62,7 +60,6 @@
       When your movement closely matches the target curve, you earn points!
     </p>
     
-    <!-- Score and warning container -->
     <div id="scoreWrapper">
       <div id="scoreContainer">
         Score: <span id="scoreDisplay">0</span> | Reps: <span id="repCount">0</span>
@@ -72,20 +69,15 @@
       </div>
     </div>
 
-    <!-- Graph area -->
     <div class="feedback-box">
       <h3>Score Target</h3>
       <div class="canvas-container">
-        <!-- Background layer: Pre‑drawn target curve -->
         <canvas id="backgroundCanvas" width="600" height="300"></canvas>
-        <!-- Foreground layer: Cursor showing live sensor data -->
         <canvas id="cursorCanvas" width="600" height="300"></canvas>
       </div>
     </div>
 
-    <!-- New div to display EC2 server response -->
     <div id="serverOutput" style="text-align: center; margin-top: 20px; font-size: 16px; color: #333;">
-      <!-- This text will be updated by JavaScript -->
     </div>
   {% else %}
     <div class="please-login-message">
@@ -101,7 +93,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Canvas and animation configuration and all your other code…
   const canvasWidth = 600;
   const canvasHeight = 300;
   const cycleDuration = 6.5; // seconds per full cycle
@@ -111,7 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const maxPitch = 110;
   const pitchRange = maxPitch - minPitch;
 
-  // Scoring variables
   let score = 0;
   const scoreIncrement = 1;
   let lastScoreTime = performance.now();
@@ -131,14 +121,12 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentPitch = 0;
   let smoothedPitch = 0;
 
-  // Load the cursor image (sprite)
   const spiritImg = new Image();
   spiritImg.onload = function() {
     console.log('Sprite image loaded.');
   };
   spiritImg.src = "{{ url_for('static', filename='images/sprite.png') }}";
 
-  // Easing functions
   function easeInQuad(t) {
     return t * t;
   }
@@ -247,13 +235,11 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   requestAnimationFrame(drawCursor);
 
-  // Socket.IO connection and data handling
   const socket = io();
   socket.on('connect', function() {
       console.log('Connected to server via Socket.IO.');
   });
 
-  // Array to store aggregated sensor data.
   let aggregatedData = [];
   let shoulderWarningTimeout;
 
@@ -279,10 +265,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById("repCount").textContent = data.rep_count;
     }
 
-    // You might want to push data to aggregatedData here if needed:
-    // aggregatedData.push(data);
 
-    // Trigger when session ends
     if (data.end === 1) {
       console.log("Workout session ended. Sending aggregated data...");
       sendMetricsData({
@@ -293,12 +276,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Your EC2 server URL
   const EC2_SERVER_URL = "http://ec2-44-201-164-184.compute-1.amazonaws.com:5000";
 
-  // Updated sendMetricsData function
   function sendMetricsData(aggregatedData) {
-    // Display waiting message
+    
     const serverOutput = document.getElementById("serverOutput");
     serverOutput.textContent = "Waiting for data from EC2 server...";
 

@@ -13,7 +13,8 @@ def get_fire(date=None, set_number=None):
     Returns:
         dict: The fetched data from Firebase.
     """
-    # Construct the URL
+
+
     if date and set_number:
         request_url = f"{db}{date}/set{set_number}.json"
     elif date:
@@ -21,9 +22,8 @@ def get_fire(date=None, set_number=None):
     else:
         request_url = f"{db}.json"
 
-    print(f"Fetching data from: {request_url}")  # Debugging log
+    # print(f"Fetching data from: {request_url}")  
     
-    # Make the GET request
     response = requests.get(request_url)
     
     # Handle the response

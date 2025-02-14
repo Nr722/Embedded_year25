@@ -11,8 +11,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
 
 
-app = Flask(__name__)  # Instantiate app first
-CORS(app)            # Then enable CORS on the app
+app = Flask(__name__) 
+CORS(app)            
 
 # Define file path (ensure this path exists)
 JSON_FILE_PATH = "/home/ubuntu/metrics.json"
@@ -30,10 +30,10 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Initialize SocketIO with your Flask app.
+
 socketio = SocketIO(app)
 
-# Global list to store live sensor data (if needed)
+
 live_workout_data = []
 
 # -----------------------------------------------------------------------------  
@@ -154,13 +154,13 @@ if __name__ == '__main__':
 @app.route('/save_metrics', methods=['POST'])
 def save_metrics():
     try:
-        # Save incoming data to metrics.json
+        
         data = request.json
-        print("Received data:", data)  # This should print in the server console
+        print("Received data:", data)  
         with open(JSON_FILE_PATH, "w") as json_file:
             json.dump(data, json_file, indent=4)
 
-        # Run the processing script
+        
         result = subprocess.run(["python3", SCRIPT_PATH], capture_output=True, text=True)
         print("Processing Script Output:", result.stdout)
         print("Processing Script Error (if any):", result.stderr)
@@ -207,36 +207,30 @@ def run_kmeans(data):
 
 def perform_kmeans(data):
 
-    # Convert to DataFrame
+    
     new_df = pd.DataFrame(data)
 
-    # ---------------------------
-    # 2. Run K-Means clustering with 2 clusters
-    # ---------------------------
+
     features = ['max_pitch', 'max_gz_up', 'max_az', 'max_gz_down']
     kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
     new_df['cluster'] = kmeans.fit_predict(new_df[features])
     
     
     cluster_averages = new_df.groupby('cluster')['max_pitch'].mean()
-    # Assume the cluster with higher average max_pitch is "good"
     label_mapping = {}
     if cluster_averages.iloc[0] > cluster_averages.iloc[1]:
         label_mapping = {cluster_averages.index[0]: 'good', cluster_averages.index[1]: 'fatigued'}
     else:
         label_mapping = {cluster_averages.index[0]: 'fatigued', cluster_averages.index[1]: 'good'}
     
-    # Apply labels
+    
     new_df['performance'] = new_df['cluster'].map(label_mapping)
     
-    # ---------------------------
-    # 4. Calculate new performance ratios and averages
-    # ---------------------------
+
     new_perf_ratio = new_df['performance'].value_counts(normalize=True)
     new_perf_averages = new_df.groupby('performance').mean()
 
-    # For demonstration, simulate some historical performance data
-    # (In practice, this would come from your database or previous workout records.)
+
     hist_perf_ratio = pd.Series({
         'good': 0.70,
         'fatigued': 0.30
@@ -248,12 +242,7 @@ def perform_kmeans(data):
         'peak_ang_vel_down': {'good': 0.35, 'fatigued': 0.40}
     })
 
-    # For our example, let’s assume:
-    # - new_df['max_gz_up'] approximates 'peak_ang_vel_up'
-    # - new_df['max_pitch'] approximates 'range_of_motion'
-    # - new_df['max_az'] approximates 'shoulder_movement'
-    # - new_df['max_gz_down'] approximates 'peak_ang_vel_down'
-    # We add these columns to the averages for clarity.
+
     new_perf_averages = new_perf_averages.rename(columns={
         'max_gz_up': 'peak_ang_vel_up',
         'max_pitch': 'range_of_motion',
@@ -261,9 +250,7 @@ def perform_kmeans(data):
         'max_gz_down': 'peak_ang_vel_down'
     })
 
-    # ---------------------------
-    # 5. Generate Recommendations
-    # ---------------------------
+
     recommendations = []
 
     recommendations.append("\nOverall Recommendations:")
@@ -293,14 +280,12 @@ def perform_kmeans(data):
         if new_perf_averages.loc['fatigued', 'peak_ang_vel_down'] > hist_perf_averages.loc['fatigued', 'peak_ang_vel_down']:
             recommendations.append("  - Your peak downward velocity on fatigued reps is higher than historical averages. Slow the negative phase for better control.")
 
-    # Additional observations based on fatigued ratio differences
     fatigued_diff = (new_perf_ratio.get('fatigued', 0) - hist_perf_ratio.get('fatigued', 0)) * 100
     if fatigued_diff > 10:
         recommendations.append(f"  - There's a significant (+{fatigued_diff:.1f}%) jump in fatigued reps. Consider shorter sets or longer rests.")
     elif fatigued_diff < -5:
         recommendations.append(f"  - Nice improvement! You reduced your fatigued reps by {-fatigued_diff:.1f}%. Keep it up.")
 
-    # Return our results as a dictionary
     result = {
         'recommendations': recommendations
     }

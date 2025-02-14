@@ -21,11 +21,10 @@ class FXOS8700:
         self.mag_offset = [0, 0, 0]
 
     def initialize(self):
-        self.bus.write_byte_data(FXOS8700_ADDR, FXOS8700_CTRL_REG1, 0x00)  # Standby
-        self.bus.write_byte_data(FXOS8700_ADDR, FXOS8700_CTRL_REG1, 0x01)  # Activate
+        self.bus.write_byte_data(FXOS8700_ADDR, FXOS8700_CTRL_REG1, 0x00)  
+        self.bus.write_byte_data(FXOS8700_ADDR, FXOS8700_CTRL_REG1, 0x01)  
 
     def calibrate(self, samples=100):
-        """Calibrate accelerometer and magnetometer offsets."""
         print("Calibrating accelerometer and magnetometer...")
 
         accel_readings = np.zeros(3)

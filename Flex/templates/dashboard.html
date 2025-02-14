@@ -4,7 +4,6 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-  /* Retro Title and Scoreboard */
   .game-title {
     text-align: center;
     font-size: 2rem;
@@ -27,7 +26,6 @@
     to   { transform: scale(1.2); color: #ff4d00; }
   }
 
-  /* Canvas container (600×300) */
   .canvas-container {
     position: relative;
     width: 600px;
@@ -65,13 +63,11 @@
     display: none;
   }
 
-  /* Feedback box around the graph */
   .feedback-box {
     text-align: center;
     margin-bottom: 20px;
   }
 
-  /* Retro End Workout Button */
   #endWorkoutBtn {
     display: block;
     margin: 1rem auto;
@@ -89,15 +85,13 @@
     color: #000;
   }
 
-  /* Server output text */
   #serverOutput {
     text-align: center;
     margin-top: 20px;
     font-size: 16px;
-    color: #ffffff; /* from your teammate’s code */
+    color: #ffffff; 
   }
 
-  /* Metrics results container (local analysis) */
   #metricsResults {
     text-align: center;
     margin-top: 20px;
@@ -147,7 +141,6 @@
       When your movement closely matches the target curve, you earn points!
     </p>
 
-    <!-- Graph area -->
     <div class="feedback-box">
       <h3>Score Target</h3>
       <div class="canvas-container">
@@ -157,9 +150,7 @@
       </div>
     </div>
 
-    <!-- New div to display EC2 server response -->
     <div id="serverOutput" style="text-align: center; margin-top: 20px; font-size: 16px; color: #ffffff;">
-      <!-- This text will be updated by JavaScript -->
     </div>
     
     <button id="endWorkoutBtn">End Workout</button>
@@ -185,7 +176,6 @@
   {% endif %}
 </div>
 
-<!-- Include Socket.IO, local analysis scripts, and chart.js -->
 <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 <script src="{{ url_for('static', filename='rep_data_processor.js') }}"></script>
 <script src="{{ url_for('static', filename='set_analysis.js') }}"></script>
@@ -194,9 +184,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  /*-------------------------------------
-    Canvas/Animation Setup (600×300)
-  -------------------------------------*/
+
   const canvasWidth = 600;
   const canvasHeight = 300;
   const cycleDuration = 6.5; // seconds per cycle
@@ -216,21 +204,18 @@ document.addEventListener('DOMContentLoaded', function() {
   let smoothedPitch = 0;
   let shoulderMovementDetected = false;
 
-  // Canvas references
   const bgCanvas = document.getElementById('backgroundCanvas');
   const bgCtx = bgCanvas.getContext('2d');
   const cursorCanvas = document.getElementById('cursorCanvas');
   const cursorCtx = cursorCanvas.getContext('2d');
   const shoulderWarningBanner = document.getElementById('shoulderWarning');
 
-  // Sprite
   const spiritImg = new Image();
   spiritImg.src = "{{ url_for('static', filename='images/sprite.png') }}";
 
   function easeInQuad(t) { return t * t; }
   function easeOutQuad(t) { return t * (2 - t); }
 
-  // (Optional) drawGrid for debugging
   function drawGrid(ctx) {
     const gridColor = 'rgba(0, 0, 0, 0.1)';
     ctx.strokeStyle = gridColor;
@@ -331,9 +316,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   requestAnimationFrame(drawCursor);
 
-  /*-------------------------------------
-    Socket.IO + Rep Processing
-  -------------------------------------*/
   const socket = io();
   let repProcessor = new RepDataProcessor();
   let shoulderWarningTimeout;
@@ -358,11 +340,11 @@ document.addEventListener('DOMContentLoaded', function() {
         shoulderWarningBanner.style.display = "none";
       }, 3000);
     }
-    // Reps
+
     if (data.rep_count !== undefined) {
       document.getElementById("repCount").textContent = data.rep_count;
     }
-    // Rep processor
+
     if (data.pitch !== undefined && data.gyro !== undefined && data.shoulder_movement !== undefined) {
       repProcessor.update(data.pitch, data.gyro, data.shoulder_movement);
     }
@@ -370,15 +352,14 @@ document.addEventListener('DOMContentLoaded', function() {
       repProcessor.storeRep(data.rep_count);
     }
 
-    // End of set => local + remote analysis
     if (data.end === 1) {
       console.log("Workout set ended. Running local analysis & sending data...");
       let aggregatedMetrics = repProcessor.getAggregatedData();
 
-      // 1) Local analysis
+      
       displayLocalAnalysis(aggregatedMetrics);
 
-      // 2) (Optional) remote analysis
+      
       sendMetricsData({
         session_id: new Date().getTime(),
         metrics: aggregatedMetrics
@@ -388,9 +369,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  /*-------------------------------------
-    Remote Analysis
-  -------------------------------------*/
+ 
   const EC2_SERVER_URL = "http://ec2-44-201-164-184.compute-1.amazonaws.com:5000";
 
   function pollProcessedResults() {
@@ -436,24 +415,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  /*-------------------------------------
-    Local Analysis + Gauge
-  -------------------------------------*/
+
   function displayLocalAnalysis(aggregatedData) {
-  // 1) Update status message
+ 
   const serverOutput = document.getElementById("serverOutput");
   serverOutput.textContent = "Local analysis complete!";
 
-  // 2) Compute set metrics & recommendations
+  
   const analysis = computeSetMetrics(aggregatedData);
   const metricsContainer = document.getElementById("metricsResults");
 
-  // Create a wrapper for analysis text to avoid wiping out existing canvases
+  
   let analysisWrapper = document.createElement("div");
   analysisWrapper.innerHTML = `<h3 class="game-title">Set Metrics & Recommendations</h3>`;
 
   if (analysis) {
-    // Build metric details
+    
     let metricHTML = `<div class="metrics-box">`;
     for (const feat in analysis.metrics) {
       const featData = analysis.metrics[feat];
@@ -464,12 +441,12 @@ document.addEventListener('DOMContentLoaded', function() {
           <span class="metric-trend">(${featData.trend} by ${Math.abs(featData.difference).toFixed(2)})</span>
         </p>`;
       }
-      // Show recommendations
+      
       metricsContainer.innerHTML += "<h4>Recommendations:</h4>";
       analysis.recommendations.forEach(rec => {
         metricsContainer.innerHTML += `<p>${rec}</p>`;
       });
-      // Display bar chart
+      
       displayBarChart(analysis.metrics, metricsContainer, "repComparisonChart");
     } else {
       metricsContainer.innerHTML += "<p>Not enough data to compute metrics.</p>";
@@ -478,7 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById("endWorkoutBtn").addEventListener("click", function() {
     const metricsContainer = document.getElementById("metricsResults");
 
-    // Option 1: Set innerHTML at once:
+    
     metricsContainer.innerHTML = `
       <h3>Analysis from workout:</h3>
       <p>Your workout form is overall good (70%) consistent with historical averages. Consider increasing the weight next time</p>
@@ -504,9 +481,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json())
         .then(data => {
           console.log("K-Means:", data);
-          // data.clustered_data => array with cluster assignments
-          // data.recommendations => list of strings
-          // Display in your DOM or chart, etc.
         })
         .catch(err => console.error(err));
 

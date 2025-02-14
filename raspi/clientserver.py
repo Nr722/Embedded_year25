@@ -1,5 +1,5 @@
 import math
-import socketio  # Import Socket.IO client
+import socketio  
 
 def sanitize_data(sensor_data):
     """Replace infinite or NaN values with 0 (or any valid number)."""

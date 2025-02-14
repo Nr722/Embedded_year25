@@ -1,14 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
   const ctx = document.getElementById('funnyChart').getContext('2d');
 
-  // We'll do 8 weeks
-  const weeks = [...Array(8).keys()].map(i => i + 1); // [1..8]
+  
+  const weeks = [...Array(8).keys()].map(i => i + 1); 
 
-  // Gains as an exponential function
+  
   const base = 5;
   const factor = 1.35;
   const gains = weeks.map(week => {
-    // e.g. 5 * (1.35^week), plus a small random offset for variety
+    
     const exponentVal = base * Math.pow(factor, week);
     const randomOffset = Math.floor(Math.random() * 3); // 0..2
     return Math.floor(exponentVal) + randomOffset;

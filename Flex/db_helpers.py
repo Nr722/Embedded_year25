@@ -17,12 +17,10 @@ timestamp/date -> set1, set2, set3, ...
 set1 -> rep1, rep2, rep3, ...
 rep1 -> range_of_motion, max_acceleration_upward, time_down, shoulder_movement
 """
-#---------------------DATABSE HELPER FUNCTIONS---------------------#
 def initialize_firestore():
     username = "randomusername"
     doc_ref = db.collection('Users').document(username)
     
-    # Initialize user document with email and password
     doc_ref.set({
         "email": "randomuser@random.com",
         "password": "securepassword123",
@@ -35,7 +33,7 @@ def initialize_firestore():
 
 def initialize_workouts(username):
     # Simulate adding multiple workouts
-    for i in range(2):  # Example: 2 workout sessions
+    for i in range(2):  
         workout_date = (datetime.now()).strftime("%d-%m-%y")
         workout_ref = db.collection('Users').document(username).collection('Workouts').document(workout_date)
         
@@ -56,7 +54,7 @@ def initialize_sets(workout_ref, num_sets):
             "description": f"Set {set_number}"
         })
         
-        initialize_reps(set_ref, 5)  # Each set has 5 reps
+        initialize_reps(set_ref, 5)  
         print(f"Set{set_number} initialized")
 
 def initialize_reps(set_ref, num_reps):
@@ -74,8 +72,7 @@ def initialize_reps(set_ref, num_reps):
         
         print(f"Rep{rep_number} initialized with random data")
 
-# Initialize Firestore with user and workout data
-#initialize_firestore()
+
 
 def add_workout(user_id):
     workout_date = datetime.now().strftime("%d-%m-%y")
@@ -109,7 +106,6 @@ def add_rep(user_id, workout_date, set_number, rep_number, rep_data):
     print(f"Rep {rep_number} added to Set {set_number} in workout on {workout_date} for user {user_id}")
 
 
-#---------------------FUNCTIONS TO FETCH FROM DB-----------------------------#
 def fetch_user_workout_data(user_id):
     user_ref = db.collection("Users").document(user_id)
     user_doc = user_ref.get()
@@ -144,10 +140,8 @@ def fetch_user_workout_data(user_id):
                 workout_data[workout_date]["sets"][set_number]["reps"][rep_number] = rep_doc.to_dict()
     
     return workout_data
-#---------------------------------------------------------------------------#
 
 
-#----------------------------------USER AUTHENTICATION FUNCTIONS---------------------------------#
 
 def hash_password(password):
     salt = bcrypt.gensalt()
@@ -186,7 +180,6 @@ def authenticate_user(user_id, password):
         print(f"{user_id} not found in DB")
         return False
     
-#-------------------------------------------------------------------------------------------------#
 
 def upload_offline_data(user_id):
     """
@@ -202,7 +195,6 @@ def upload_offline_data(user_id):
     with open(CSV_FILE_PATH, mode='r') as file:
         reader = csv.DictReader(file)
         
-        # Loop through each row and push to Firestore
         for row in reader:
             workout_date = datetime.fromtimestamp(float(row["timestamp"])).strftime("%d-%m-%y")
             set_number = "Set1"  # Adjust this logic if needed to determine the correct set number
@@ -218,7 +210,6 @@ def upload_offline_data(user_id):
             
             add_rep(user_id, workout_date, set_number, rep_number, rep_data)
     
-    # Delete the CSV file after uploading to avoid reprocessing the same data
     os.remove(CSV_FILE_PATH)
     print("Offline data uploaded and CSV file deleted.")
 
@@ -239,11 +230,9 @@ def write_sensor_data_to_csv(data):
     """
     file_exists = os.path.isfile(CSV_FILE_PATH)
 
-    # Open the file in append mode
     with open(CSV_FILE_PATH, mode='a', newline='') as file:
         writer = csv.writer(file)
         
-        # Write the header only if the file doesn't exist
         if not file_exists:
             writer.writerow(["timestamp", "range_of_motion", "peak_an_vel_up", "peak_ang_vel_down", "shoulder_movement"])
         

@@ -1,7 +1,7 @@
-// Global chart reference
+
 let tutChart; 
-let tutData = [];   // Will store sequential TUT data points
-let fetchCount = 0; // We'll use an incremental x-axis
+let tutData = [];   
+let fetchCount = 0; 
 
 function highlightChange(element) {
   element.classList.add('flash');
@@ -13,10 +13,10 @@ function initTUTChart() {
   tutChart = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: [],     // x-axis: will fill with fetch counts or timestamps
+      labels: [],     
       datasets: [{
         label: 'Time Under Tension (s)',
-        data: [],      // we'll push TUT values here
+        data: [],      
         borderColor: '#4ea7ff',
         backgroundColor: 'rgba(78, 167, 255, 0.3)',
         fill: true,
@@ -63,9 +63,9 @@ function fetchMLData() {
         highlightChange(swingElem);
       }
 
-      // TUT chart
+      
       fetchCount++;
-      const newTUT = data.time_under_tension; // numeric
+      const newTUT = data.time_under_tension; 
       if (tutChart) {
         tutChart.data.labels.push(fetchCount);
         tutChart.data.datasets[0].data.push(newTUT);
@@ -75,9 +75,9 @@ function fetchMLData() {
     .catch(err => console.error("Error fetching ML data:", err));
 }
 
-// Initialize chart & start fetching
+
 document.addEventListener('DOMContentLoaded', () => {
-  // If the TUT chart canvas is on this page, init the chart
+  
   if (document.getElementById('tutChart')) {
     initTUTChart();
     fetchMLData();

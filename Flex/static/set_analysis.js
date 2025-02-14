@@ -5,12 +5,12 @@ function computeSetMetrics(aggregatedData) {
       return null;
     }
   
-    // Group reps: first 2/3 are early; last 1/3 are late.
+    
     const earlyCount = Math.floor((2 / 3) * totalReps);
     const earlyReps = reps.slice(0, earlyCount);
     const lateReps = reps.slice(earlyCount);
   
-    // Define how rep properties map to our feature names.
+    
     const features = {
       range_of_motion: "max_pitch",
       peak_ang_vel_up: "max_gz_up",
@@ -18,7 +18,7 @@ function computeSetMetrics(aggregatedData) {
       shoulder_movement: "max_az"
     };
   
-    // Compute mean values for each feature.
+    
     const early_means = {};
     const late_means = {};
   
@@ -30,7 +30,7 @@ function computeSetMetrics(aggregatedData) {
       late_means[feat] = lateReps.length ? lateSum / lateReps.length : 0;
     }
   
-    // Create metrics with differences and trends.
+    
     const metrics = {};
     for (const feat in early_means) {
       const diff = late_means[feat] - early_means[feat];
@@ -43,7 +43,7 @@ function computeSetMetrics(aggregatedData) {
       };
     }
   
-    // Build recommendations based on significant changes.
+    
     const recommendations = [];
     if (
       early_means["range_of_motion"] > 0 &&

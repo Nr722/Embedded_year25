@@ -45,16 +45,11 @@
       setTimeout(() => {
         const flashMessages = document.querySelectorAll('.flash-msg');
         flashMessages.forEach(msg => {
-          // Option A: remove() immediately
-          // msg.remove();
-
-          // Option B: fade out with a CSS transition, then remove
           msg.style.transition = 'opacity 1s';
           msg.style.opacity = '0';
-          // after the transition, remove the element
           setTimeout(() => msg.remove(), 1000);
         });
-      }, 5000); // 5 seconds
+      }, 5000); 
     });
 </script>
 
