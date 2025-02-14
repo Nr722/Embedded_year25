@@ -100,6 +100,26 @@
       color: #f0f0f0;
     }
   </style>
+  <style>
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.8s ease-out;
+    }
+    .fade-in.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .video-container.fade-in{
+      transition-delay: 0.2s;
+    }
+    .fade-in.hide {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.2s ease-in;
+    }
+  </style>
+  
 </head>
 <body>
   <!-- Header -->
@@ -154,33 +174,45 @@
   <section id="technology" class="bg-light">
     <div class="container text-center">
       <h2>How It Works</h2>
-      <p>Discover the technology behind our wearable tracker.</p>
+      <p>Explore the interface and insights provided by our web app.</p>
+      <div class="row mb-4">
+        <div class="col-md-6 mb-4 fade-in">
+          <h3>Dashboard Overview</h3>
+          <p>Gain an instant overview of your performance and workout history.</p>
+          <img src="./dashboard.png" alt="Dashboard Overview" class="img-fluid mb-3 rounded fade-in">
+        </div>
+        <div class="col-md-6 mb-4 fade-in">
+          <h3>Real-Time Feedback</h3>
+          <p>Monitor your form in real-time through visual feedback.</p>
+          <img src="./webapp.png" alt="Real-Time Feedback" class="img-fluid mb-3 rounded fade-in">
+        </div>
+      </div>
       <div class="row">
-        <div class="col-md-4">
-          <h3>Precision Sensors</h3>
-          <p>Sensors capture every nuance of your movement.</p>
-          <img src="your-image-file3.jpg" alt="Seamless Integration" class="img-fluid mb-3 rounded">
+        <div class="col-md-12 fade-in">
+          <h3>Workout Summary</h3>
+          <p>View detailed summaries after each workout, including performance metrics.</p>
+          <img src="./metricsimage.jpeg" alt="Workout Summary" class="img-fluid mb-3 rounded fade-in">
         </div>
-        <div class="col-md-4">
-          <h3>Smart Algorithms</h3>
-          <p>Advanced algorithms analyze your form and deliver feedback.</p>
-          <img src="your-image-file3.jpg" alt="Seamless Integration" class="img-fluid mb-3 rounded">
-        </div>
-        <div class="col-md-4">
-          <h3>Seamless Integration</h3>
-          <p>Sync your data with our user-friendly mobile app.</p>
-          <img src="./appImage.jpg" alt="Seamless Integration" class="img-fluid mb-3 rounded">
+      </div>
+      <div class="row mt-4">
+        <div class="col-md-12 fade-in">
+          <h3>ML Model Feedback</h3>
+          <p>Our ML model provides personalized critiques to help you improve.</p>
+          <img src="./ml-output.jpeg" alt="ML Model Feedback" class="img-fluid mb-3 rounded fade-in">
         </div>
       </div>
     </div>
   </section>
+  
 
   <!-- Video Section -->
-  <section id="demo/randomvideo" class="bg-light">
+  <section id="demo" class="bg-light">
     <div class="container text-center">
-      <h2>See It In Action</h2>
-      <div class="video-container">
-        <iframe width="100%" height="600" src="https://www.youtube.com/embed/JJqgGEBmBes" frameborder="0" allowfullscreen></iframe>
+      <h2 class="fade-in">See It In Action</h2>
+      <div class="video-container fade-in">
+        <video width="100%" height="600" controls>
+          <source src="./My Movie2.mp4" type="video/mp4">
+        </video>
       </div>
     </div>
   </section>
@@ -229,4 +261,36 @@
     </div>
   </footer>
 </body>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+  let lastScrollY = window.scrollY;
+  const fadeInElements = document.querySelectorAll(".fade-in");
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const currentScrollY = window.scrollY;
+        const isScrollingUp = currentScrollY < lastScrollY;
+
+        if (entry.isIntersecting) {
+          entry.target.classList.add("show");
+          entry.target.classList.remove("hide");
+        } else if (isScrollingUp && currentScrollY > entry.boundingClientRect.top + window.innerHeight) {
+          entry.target.classList.add("hide");
+        }
+
+        lastScrollY = currentScrollY;
+      });
+    },
+    { threshold: 0.5 }  // Adjusted threshold for smoother detection
+  );
+
+  fadeInElements.forEach((element) => {
+    observer.observe(element);
+  });
+});
+
+</script>
+
+
 </html>
