@@ -174,6 +174,7 @@
 
     <!-- Processed (remote) results area -->
     <div id="processedResults" style="text-align: center; margin-top: 20px;"></div>
+    <div id="processedResultsdb" style="text-align: center; margin-top: 20px;"></div>
 
   {% else %}
     <div class="please-login-message">
@@ -480,6 +481,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   document.getElementById("endWorkoutBtn").addEventListener("click", function() {
+    const metricsContainer = document.getElementById("metricsResults");
+
+    // Option 1: Set innerHTML at once:
+    metricsContainer.innerHTML = `
+      <h3>Analysis from workout:</h3>
+      <p>Your workout form is overall good (70%) consistent with historical averages. Consider increasing the weight next time</p>
+    `;
+
     const FIREBASE_URL = "https://dnstest-2487b-default-rtdb.europe-west1.firebasedatabase.app/.json"; // Replace with your Firebase URL
 
     fetch(FIREBASE_URL, {
@@ -489,7 +498,23 @@ document.addEventListener('DOMContentLoaded', function() {
     .then(response => response.json())
     .then(data => {
       if (data) {
-        console.log("Workout session ended. Firebase response:", data);
+        fetch('/run-kmeans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([
+          { "max_pitch": 0.75, "max_gz_up": 0.55, "max_az": 0.35, "max_gz_down": 0.25 },
+          { "max_pitch": 0.90, "max_gz_up": 0.65, "max_az": 0.40, "max_gz_down": 0.20 }
+        ])
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("K-Means:", data);
+          // data.clustered_data => array with cluster assignments
+          // data.recommendations => list of strings
+          // Display in your DOM or chart, etc.
+        })
+        .catch(err => console.error(err));
+
         document.getElementById("serverOutput").textContent = "Workout successfully ended!";
       } else {
         document.getElementById("serverOutput").textContent = "No response from Firebase.";
