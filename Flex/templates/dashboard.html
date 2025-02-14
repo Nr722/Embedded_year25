@@ -430,17 +430,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 2) Show each rep's data
     const resultsContainer = document.getElementById("processedResults");
-    resultsContainer.innerHTML = "<h3>Processed Reps (Local Analysis):</h3>";
     if (aggregatedData.reps && aggregatedData.reps.length > 0) {
       aggregatedData.reps.forEach(rep => {
-        resultsContainer.innerHTML += `
-          <p>
-            Rep ${rep.rep_count}: 
-            Range of Motion: ${rep.max_pitch.toFixed(2)}, 
-            Peak Upward Velocity: ${rep.max_gz_up.toFixed(2)}, 
-            Peak Downward Velocity: ${rep.max_gz_down.toFixed(2)}, 
-            Shoulder Movement: ${rep.max_az.toFixed(2)}
-          </p>`;
+
       });
     } else {
       resultsContainer.innerHTML += `<p>No processed reps available.</p>`;
