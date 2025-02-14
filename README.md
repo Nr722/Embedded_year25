@@ -85,7 +85,7 @@ Below we map the project’s implementation to each requirement from your specif
 
 11. *Marketing Website*
     - *Implementation*: The landing page (index.html) plus CSS, images, and comedic chart demonstrate product benefits to prospects.
-
+      https://nr722.github.io/Embedded_year25/
 12. *Marketing Video*
     - *Implementation: *Not included here in code, but placeholders for an embedded video or link can fulfill the <2min marketing clip requirement.
 
