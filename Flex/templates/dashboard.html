@@ -102,7 +102,7 @@
     text-align: center;
     margin-top: 20px;
     font-size: 16px;
-    color: #333;
+    color: #ffffff;
   }
   #metricsResults h3 {
     margin-bottom: 10px;
@@ -440,33 +440,28 @@ document.addEventListener('DOMContentLoaded', function() {
     Local Analysis + Gauge
   -------------------------------------*/
   function displayLocalAnalysis(aggregatedData) {
-    // 1) Status
-    const serverOutput = document.getElementById("serverOutput");
-    serverOutput.textContent = "Local analysis complete!";
+  // 1) Update status message
+  const serverOutput = document.getElementById("serverOutput");
+  serverOutput.textContent = "Local analysis complete!";
 
-    // 2) Show each rep's data
-    const resultsContainer = document.getElementById("processedResults");
-    if (aggregatedData.reps && aggregatedData.reps.length > 0) {
-      aggregatedData.reps.forEach(rep => {
+  // 2) Compute set metrics & recommendations
+  const analysis = computeSetMetrics(aggregatedData);
+  const metricsContainer = document.getElementById("metricsResults");
 
-      });
-    } else {
-      resultsContainer.innerHTML += `<p>No processed reps available.</p>`;
-    }
+  // Create a wrapper for analysis text to avoid wiping out existing canvases
+  let analysisWrapper = document.createElement("div");
+  analysisWrapper.innerHTML = `<h3 class="game-title">Set Metrics & Recommendations</h3>`;
 
-    // 3) Compute set metrics + recommendations
-    const analysis = computeSetMetrics(aggregatedData);
-    const metricsContainer = document.getElementById("metricsResults");
-    metricsContainer.innerHTML = "<h3>Set Metrics & Recommendations:</h3>";
-
-    if (analysis) {
-      // Show the metric changes
-      for (const feat in analysis.metrics) {
-        const featData = analysis.metrics[feat];
-        metricsContainer.innerHTML += `<p>
-          ${feat}: early = ${featData.early.toFixed(2)}, 
-          late = ${featData.late.toFixed(2)} 
-          (${featData.trend} by ${Math.abs(featData.difference).toFixed(2)})
+  if (analysis) {
+    // Build metric details
+    let metricHTML = `<div class="metrics-box">`;
+    for (const feat in analysis.metrics) {
+      const featData = analysis.metrics[feat];
+      metricHTML += `
+        <p>
+          <strong>${feat}:</strong> Early = ${featData.early.toFixed(2)}, 
+          Late = ${featData.late.toFixed(2)}
+          <span class="metric-trend">(${featData.trend} by ${Math.abs(featData.difference).toFixed(2)})</span>
         </p>`;
       }
       // Show recommendations

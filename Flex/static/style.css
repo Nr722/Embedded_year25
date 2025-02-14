@@ -207,3 +207,43 @@ footer {
 .flash-danger  { background-color: #f44336; }  /* red */
 .flash-info    { background-color: #2196F3; }  /* blue */
 
+/* General container styles */
+#metricsResults {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 16px;
+  color: #fff;
+}
+
+/* Metric box */
+.metrics-box {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #4ea7ff;
+  padding: 15px;
+  margin: 10px auto;
+  width: 60%;
+  border-radius: 10px;
+}
+.metric-trend {
+  color: #ffea00;
+  font-weight: bold;
+}
+
+/* Recommendations list */
+.recommendations-list {
+  text-align: left;
+  display: inline-block;
+  margin: 10px auto;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px;
+  border-radius: 8px;
+}
+.recommendations-list li {
+  margin-bottom: 5px;
+}
+
+/* Gauge container */
+.gauge-container {
+  text-align: center;
+  margin-top: 20px;
+}
