@@ -424,60 +424,66 @@ document.addEventListener('DOMContentLoaded', function() {
     Local Analysis + Gauge
   -------------------------------------*/
   function displayLocalAnalysis(aggregatedData) {
-    // 1) Update status message
-    const serverOutput = document.getElementById("serverOutput");
-    serverOutput.textContent = "Local analysis complete!";
+  // 1) Update status message
+  const serverOutput = document.getElementById("serverOutput");
+  serverOutput.textContent = "Local analysis complete!";
 
-    // 2) Compute set metrics & recommendations
-    const analysis = computeSetMetrics(aggregatedData);
-    const metricsContainer = document.getElementById("metricsResults");
-    metricsContainer.innerHTML = `<h3 class="game-title">Set Metrics & Recommendations</h3>`;
+  // 2) Compute set metrics & recommendations
+  const analysis = computeSetMetrics(aggregatedData);
+  const metricsContainer = document.getElementById("metricsResults");
 
-    if (analysis) {
-        // Show metric changes inside a formatted box
-        let metricHTML = `<div class="metrics-box">`;
-        for (const feat in analysis.metrics) {
-            const featData = analysis.metrics[feat];
-            metricHTML += `
-              <p>
-                <strong>${feat}:</strong> Early = ${featData.early.toFixed(2)}, 
-                Late = ${featData.late.toFixed(2)}
-                <span class="metric-trend">(${featData.trend} by ${Math.abs(featData.difference).toFixed(2)})</span>
-              </p>`;
-        }
-        metricHTML += `</div>`;
-        metricsContainer.innerHTML += metricHTML;
+  // Create a wrapper for analysis text to avoid wiping out existing canvases
+  let analysisWrapper = document.createElement("div");
+  analysisWrapper.innerHTML = `<h3 class="game-title">Set Metrics & Recommendations</h3>`;
 
-        // Show recommendations
-        let recHTML = `<h4>Recommendations:</h4><ul class="recommendations-list">`;
-        analysis.recommendations.forEach(rec => {
-            recHTML += `<li>${rec}</li>`;
-        });
-        recHTML += `</ul>`;
-        metricsContainer.innerHTML += recHTML;
-
-        // Display Bar Chart (ensure canvas exists)
-        metricsContainer.innerHTML += `<canvas id="repComparisonChart" width="600" height="400"></canvas>`;
-        displayBarChart(analysis.metrics, metricsContainer, "repComparisonChart");
-    } else {
-        metricsContainer.innerHTML += `<p>Not enough data to compute metrics.</p>`;
+  if (analysis) {
+    // Build metric details
+    let metricHTML = `<div class="metrics-box">`;
+    for (const feat in analysis.metrics) {
+      const featData = analysis.metrics[feat];
+      metricHTML += `
+        <p>
+          <strong>${feat}:</strong> Early = ${featData.early.toFixed(2)}, 
+          Late = ${featData.late.toFixed(2)}
+          <span class="metric-trend">(${featData.trend} by ${Math.abs(featData.difference).toFixed(2)})</span>
+        </p>`;
     }
+    metricHTML += `</div>`;
+    analysisWrapper.innerHTML += metricHTML;
 
-    // 3) Show Good Reps Gauge in a dedicated section
-    const totalReps = aggregatedData.reps.length;
-    const goodReps = aggregatedData.reps.filter(r => r.cluster === 1).length;
+    // Build recommendations list
+    let recHTML = `<h4>Recommendations:</h4><ul class="recommendations-list">`;
+    analysis.recommendations.forEach(rec => {
+      recHTML += `<li>${rec}</li>`;
+    });
+    recHTML += `</ul>`;
+    analysisWrapper.innerHTML += recHTML;
 
-    // Ensure the gauge section exists
-    let gaugeHTML = `
+    // Append the analysis content without disturbing the existing canvases
+    metricsContainer.insertAdjacentElement("afterbegin", analysisWrapper);
+
+    // Use the existing static bar chart canvas if present; otherwise, add it.
+    if (!document.getElementById("repComparisonChart")) {
+      metricsContainer.insertAdjacentHTML("beforeend", `<canvas id="repComparisonChart" width="600" height="400"></canvas>`);
+    }
+    displayBarChart(analysis.metrics, metricsContainer, "repComparisonChart");
+  } else {
+    metricsContainer.insertAdjacentHTML("beforeend", `<p>Not enough data to compute metrics.</p>`);
+  }
+
+  // 3) Show Good Reps Gauge—append only if it isn’t already there.
+  const totalReps = aggregatedData.reps.length;
+  const goodReps = aggregatedData.reps.filter(r => r.cluster === 1).length;
+  if (!document.getElementById("goodRepsGauge")) {
+    const gaugeHTML = `
       <div class="gauge-container">
         <h3>Good Reps Gauge</h3>
         <canvas id="goodRepsGauge" width="200" height="100"></canvas>
       </div>
     `;
-    metricsContainer.innerHTML += gaugeHTML;
-
-    // Animate the gauge correctly
-    updateGoodRepsGauge(goodReps, totalReps);
+    metricsContainer.insertAdjacentHTML("beforeend", gaugeHTML);
+  }
+  updateGoodRepsGauge(goodReps, totalReps);
 }
 
   /*-------------------------------------
