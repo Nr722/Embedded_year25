@@ -4,9 +4,11 @@ from flask_login import LoginManager, UserMixin, login_user, current_user, logou
 from flask_socketio import SocketIO, emit
 import os, random, time, json, subprocess
 from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)
+import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 
 app = Flask(__name__)  # Instantiate app first
@@ -192,3 +194,114 @@ def get_processed_results():
             return jsonify({"error": "Processed data not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/')
+def dashboard():
+    return render_template('dashboard.html')
+
+# API endpoint to run K-Means and return results
+@app.route('/run-kmeans', methods=['GET'])
+def run_kmeans(data):
+    result = perform_kmeans(data)
+    return jsonify(result)
+
+def perform_kmeans(data):
+
+    # Convert to DataFrame
+    new_df = pd.DataFrame(data)
+
+    # ---------------------------
+    # 2. Run K-Means clustering with 2 clusters
+    # ---------------------------
+    features = ['max_pitch', 'max_gz_up', 'max_az', 'max_gz_down']
+    kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
+    new_df['cluster'] = kmeans.fit_predict(new_df[features])
+    
+    
+    cluster_averages = new_df.groupby('cluster')['max_pitch'].mean()
+    # Assume the cluster with higher average max_pitch is "good"
+    label_mapping = {}
+    if cluster_averages.iloc[0] > cluster_averages.iloc[1]:
+        label_mapping = {cluster_averages.index[0]: 'good', cluster_averages.index[1]: 'fatigued'}
+    else:
+        label_mapping = {cluster_averages.index[0]: 'fatigued', cluster_averages.index[1]: 'good'}
+    
+    # Apply labels
+    new_df['performance'] = new_df['cluster'].map(label_mapping)
+    
+    # ---------------------------
+    # 4. Calculate new performance ratios and averages
+    # ---------------------------
+    new_perf_ratio = new_df['performance'].value_counts(normalize=True)
+    new_perf_averages = new_df.groupby('performance').mean()
+
+    # For demonstration, simulate some historical performance data
+    # (In practice, this would come from your database or previous workout records.)
+    hist_perf_ratio = pd.Series({
+        'good': 0.70,
+        'fatigued': 0.30
+    })
+    hist_perf_averages = pd.DataFrame({
+        'peak_ang_vel_up': {'good': 0.65, 'fatigued': 0.55},
+        'range_of_motion': {'good': 1.0, 'fatigued': 0.9},
+        'shoulder_movement': {'good': 0.50, 'fatigued': 0.60},
+        'peak_ang_vel_down': {'good': 0.35, 'fatigued': 0.40}
+    })
+
+    # For our example, let’s assume:
+    # - new_df['max_gz_up'] approximates 'peak_ang_vel_up'
+    # - new_df['max_pitch'] approximates 'range_of_motion'
+    # - new_df['max_az'] approximates 'shoulder_movement'
+    # - new_df['max_gz_down'] approximates 'peak_ang_vel_down'
+    # We add these columns to the averages for clarity.
+    new_perf_averages = new_perf_averages.rename(columns={
+        'max_gz_up': 'peak_ang_vel_up',
+        'max_pitch': 'range_of_motion',
+        'max_az': 'shoulder_movement',
+        'max_gz_down': 'peak_ang_vel_down'
+    })
+
+    # ---------------------------
+    # 5. Generate Recommendations
+    # ---------------------------
+    recommendations = []
+
+    recommendations.append("\nOverall Recommendations:")
+    if new_perf_ratio.get('fatigued', 0) > hist_perf_ratio.get('fatigued', 0):
+        recommendations.append("  - You performed a higher percentage of fatigued reps compared to your historical data. Consider reviewing your recovery protocols or adjusting your workout intensity.")
+    else:
+        recommendations.append("  - Your percentage of fatigued reps is in line with or below your historical average. Keep up the good work on recovery.")
+
+    # Further recommendations for 'good' reps
+    if ('good' in new_perf_averages.index) and ('good' in hist_perf_averages.index):
+        if new_perf_averages.loc['good', 'peak_ang_vel_up'] < hist_perf_averages.loc['good', 'peak_ang_vel_up']:
+            recommendations.append("  - For your 'good' reps, the peak upward velocity is slightly lower than usual. You might consider incorporating power or speed work to improve explosive strength.")
+
+    # Extended logic for 'good' reps: Range of Motion and Shoulder Movement
+    if ('good' in new_perf_averages.index) and ('good' in hist_perf_averages.index):
+        if new_perf_averages.loc['good', 'range_of_motion'] < 0.95 * hist_perf_averages.loc['good', 'range_of_motion']:
+            recommendations.append("  - Your average range of motion for 'good' reps has decreased more than 5% compared to your historical average. Consider mobility work.")
+        if new_perf_averages.loc['good', 'shoulder_movement'] > 1.05 * hist_perf_averages.loc['good', 'shoulder_movement']:
+            recommendations.append("  - Your shoulder movement for 'good' reps is higher than your historical average. Focus on strict form to isolate the targeted muscles.")
+
+    # Recommendations for 'fatigued' reps
+    if ('fatigued' in new_perf_averages.index) and ('fatigued' in hist_perf_averages.index):
+        if new_perf_averages.loc['fatigued', 'range_of_motion'] < hist_perf_averages.loc['fatigued', 'range_of_motion']:
+            recommendations.append("  - Your range of motion in 'fatigued' reps is lower than your historical norm. Consider lighter weights or more rest.")
+        if new_perf_averages.loc['fatigued', 'shoulder_movement'] > hist_perf_averages.loc['fatigued', 'shoulder_movement']:
+            recommendations.append("  - Your shoulder involvement in 'fatigued' reps is higher than usual. Focus on strict technique.")
+        if new_perf_averages.loc['fatigued', 'peak_ang_vel_down'] > hist_perf_averages.loc['fatigued', 'peak_ang_vel_down']:
+            recommendations.append("  - Your peak downward velocity on fatigued reps is higher than historical averages. Slow the negative phase for better control.")
+
+    # Additional observations based on fatigued ratio differences
+    fatigued_diff = (new_perf_ratio.get('fatigued', 0) - hist_perf_ratio.get('fatigued', 0)) * 100
+    if fatigued_diff > 10:
+        recommendations.append(f"  - There's a significant (+{fatigued_diff:.1f}%) jump in fatigued reps. Consider shorter sets or longer rests.")
+    elif fatigued_diff < -5:
+        recommendations.append(f"  - Nice improvement! You reduced your fatigued reps by {-fatigued_diff:.1f}%. Keep it up.")
+
+    # Return our results as a dictionary
+    result = {
+        'recommendations': recommendations
+    }
+    return result
